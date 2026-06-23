@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { BandoSource, BandoSummary } from '@/lib/types';
 import { BandoCard } from './BandoCard';
+import { Owl } from './Owl';
 
 export function BandiSearch({ initial }: { initial: BandoSummary[] }) {
   const [bandi, setBandi] = useState<BandoSummary[]>(initial);
@@ -40,8 +41,10 @@ export function BandiSearch({ initial }: { initial: BandoSummary[] }) {
         <button
           onClick={() => cerca('scraping')}
           disabled={loading}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${
-            source === 'scraping' ? 'bg-brand text-white' : 'bg-white border border-slate-300 hover:border-brand'
+          className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
+            source === 'scraping'
+              ? 'brand-flow text-white shadow-lg shadow-brand/25'
+              : 'glass glass-hover text-slate-700'
           }`}
         >
           🔍 Cerca bandi online
@@ -49,30 +52,47 @@ export function BandiSearch({ initial }: { initial: BandoSummary[] }) {
         <button
           onClick={() => cerca('drive')}
           disabled={loading}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${
-            source === 'drive' ? 'bg-brand text-white' : 'bg-white border border-slate-300 hover:border-brand'
+          className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
+            source === 'drive'
+              ? 'brand-flow text-white shadow-lg shadow-brand/25'
+              : 'glass glass-hover text-slate-700'
           }`}
         >
           📁 Bandi da Drive
         </button>
-        {loading && <span className="text-sm text-slate-500">Ricerca in corso…</span>}
+        {loading && (
+          <span className="flex items-center gap-2 text-sm text-slate-500">
+            <Owl className="w-6" motion="pulse" /> Ricerca in corso…
+          </span>
+        )}
       </div>
 
       {error && (
-        <div className="rounded-lg border border-brand-bad/30 bg-brand-bad/10 px-4 py-3 text-sm text-brand-bad">
+        <div className="rounded-xl border border-brand-bad/30 bg-brand-bad/10 px-4 py-3 text-sm text-brand-bad">
           {error}
         </div>
       )}
 
-      {!loading && !error && ordinati.length === 0 && (
-        <div className="text-sm text-slate-500">Nessun bando trovato per questa fonte.</div>
+      {loading && (
+        <div className="grid place-items-center py-16">
+          <Owl className="w-20" motion="pulse" />
+        </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {ordinati.map((b) => (
-          <BandoCard key={b.id} bando={b} />
-        ))}
-      </div>
+      {!loading && !error && ordinati.length === 0 && (
+        <div className="grid place-items-center gap-3 py-16 text-slate-500">
+          <Owl className="w-16 opacity-30" />
+          <span className="text-sm">Nessun bando trovato per questa fonte.</span>
+        </div>
+      )}
+
+      {!loading && (
+        <div className="grid gap-5 md:grid-cols-2">
+          {ordinati.map((b) => (
+            <BandoCard key={b.id} bando={b} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

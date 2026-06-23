@@ -1,14 +1,17 @@
 import Link from 'next/link';
 import type { BandoSummary } from '@/lib/types';
+import { Owl } from './Owl';
 import { ScoreGauge } from './ScoreGauge';
 
 export function BandoCard({ bando }: { bando: BandoSummary }) {
   return (
     <Link
       href={`/bandi/${bando.id}`}
-      className="block rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:border-brand-accent"
+      className="group relative block overflow-hidden rounded-2xl glass glass-hover p-5"
     >
-      <div className="flex items-start gap-4">
+      {/* watermark gufo nell'angolo */}
+      <Owl className="pointer-events-none absolute -right-6 -bottom-6 w-28 opacity-[0.06] transition-opacity group-hover:opacity-[0.12]" />
+      <div className="relative flex items-start gap-4">
         <ScoreGauge value={bando.punteggio} />
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -21,7 +24,9 @@ export function BandoCard({ bando }: { bando: BandoSummary }) {
               {bando.fonte === 'scraping' ? '🔍 online' : '📁 drive'}
             </span>
           </div>
-          <div className="mt-1 font-semibold text-slate-900">{bando.titolo}</div>
+          <div className="mt-1 font-semibold text-slate-900 group-hover:text-brand transition-colors">
+            {bando.titolo}
+          </div>
           <div className="mt-1 text-sm text-slate-600">{bando.ente}</div>
           <p className="mt-3 text-sm text-slate-700">{bando.sintesiBreve}</p>
           <div className="mt-3 flex gap-4 text-xs text-slate-500">
