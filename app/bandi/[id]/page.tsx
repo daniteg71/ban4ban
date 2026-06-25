@@ -64,7 +64,7 @@ export default async function BandoPage({ params }: { params: { id: string } }) 
       </header>
 
       <section className="rounded-2xl glass p-6">
-        <h2 className="font-semibold mb-4">Criteri di valutazione (10)</h2>
+        <h2 className="font-semibold mb-4">Criteri di valutazione ({criteri.length})</h2>
         <CriteriaTable criteri={criteri} />
       </section>
 

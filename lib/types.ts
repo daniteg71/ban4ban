@@ -41,6 +41,8 @@ export type BandoSummary = {
   fonte: BandoSource;
   // Presente solo per i bandi trovati via scraping: link alla pagina originale.
   url?: string;
+  // Tier dal motore di matching (funnel a 3 stadi), se calcolato.
+  tier?: 'HIGH' | 'MEDIUM' | 'LOW' | 'EXCLUDED';
 };
 
 export type AnalisiBando = {

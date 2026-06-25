@@ -3,7 +3,11 @@
 
 import { getCachedDna, invalidateDna } from './dna-cache';
 import { buildDnaGraph, type DnaGraph } from './dna-graph';
-import { MOCK_ANALISI, MOCK_BANDI, MOCK_BANDI_ONLINE, MOCK_DNA } from './mock-data';
+import { MOCK_ANALISI, MOCK_BANDI, MOCK_DNA } from './mock-data';
+import { MOCK_RAW_TENDERS } from './mock-tenders';
+import { runMatchingPipeline } from './pipeline';
+import { toAnalisi, toBandoSummary } from './pipeline/to-bando';
+import type { PipelineReport } from './pipeline/types';
 import type { AnalisiBando, BandoSource, BandoSummary, DnaSnapshot } from './types';
 
 const MODE = (process.env.DATA_MODE ?? 'mock').toLowerCase();
@@ -24,6 +28,7 @@ export async function getDna(): Promise<DnaSnapshot> {
 // Forza il rebuild del DNA alla prossima richiesta (bottone "Aggiorna DNA" / webhook Drive).
 export function refreshDna(): void {
   invalidateDna();
+  reportCache = null; // il report dipende dal DNA: invalidalo insieme
 }
 
 // Grafo del DNA (knowledge base). Deriva dallo snapshot, quindi cambia col Drive.
@@ -32,16 +37,39 @@ export async function getDnaGraph(): Promise<DnaGraph> {
   return buildDnaGraph(dna);
 }
 
+// ---- Motore di matching (funnel a 3 stadi) ---------------------------------
+// La fonte 'scraping' passa i bandi grezzi nel funnel: filtri gratis -> pre-score ->
+// scoring completo -> LLM solo sui top. In live i grezzi arrivano dallo scraper/Drive.
+// Memoizzato per versione di DNA così dashboard e dettaglio non rieseguono inutilmente.
+
+let reportCache: { key: string; report: PipelineReport } | null = null;
+
+export async function getScrapingReport(): Promise<PipelineReport> {
+  const dna = await getDna();
+  const key = dna.aggiornatoIl;
+  if (reportCache?.key === key) return reportCache.report;
+
+  let rawTenders = MOCK_RAW_TENDERS;
+  if (MODE === 'live') {
+    const { cercaBandiOnline } = await import('./scraper');
+    rawTenders = await cercaBandiOnline(dna); // lo scraper restituisce RawTender[]
+  }
+  const report = await runMatchingPipeline(dna, rawTenders);
+  reportCache = { key, report };
+  return report;
+}
+
 // ---- Bandi -----------------------------------------------------------------
-// Due fonti: 'drive' (file pre-caricati) oppure 'scraping' (ricerca online).
+// Due fonti: 'drive' (file pre-caricati) oppure 'scraping' (ricerca online via funnel).
 
 export async function getBandi(source: BandoSource = 'drive'): Promise<BandoSummary[]> {
+  if (source === 'scraping') {
+    const report = await getScrapingReport();
+    return report.results.map(toBandoSummary);
+  }
+  // fonte drive
   if (MODE === 'live') {
     const dna = await getDna();
-    if (source === 'scraping') {
-      const { cercaBandiOnline } = await import('./scraper');
-      return cercaBandiOnline(dna);
-    }
     const { listBandiPdf, fetchBandoTesto } = await import('./drive');
     const { valutaBando } = await import('./gemini');
     const files = await listBandiPdf();
@@ -50,8 +78,7 @@ export async function getBandi(source: BandoSource = 'drive'): Promise<BandoSumm
     );
     return analisi.map((a) => a.bando);
   }
-  // mock
-  return source === 'scraping' ? MOCK_BANDI_ONLINE : MOCK_BANDI;
+  return MOCK_BANDI;
 }
 
 // ---- Analisi singola -------------------------------------------------------
@@ -63,9 +90,15 @@ export async function getAnalisi(id: string): Promise<AnalisiBando | null> {
     const { valutaBando } = await import('./gemini');
     return valutaBando(dna, await fetchBandoTesto(id));
   }
-  // mock: analisi curata se esiste, altrimenti generata dal summary (per i bandi online)
+  // bandi dal funnel (scraping): id tipo "online-..."
+  if (id.startsWith('online-')) {
+    const report = await getScrapingReport();
+    const scored = report.results.find((s) => s.tender.raw.externalId === id);
+    return scored ? toAnalisi(scored) : null;
+  }
+  // bandi drive: analisi curata se esiste, altrimenti generata dal summary
   if (MOCK_ANALISI[id]) return MOCK_ANALISI[id];
-  const summary = [...MOCK_BANDI, ...MOCK_BANDI_ONLINE].find((b) => b.id === id);
+  const summary = MOCK_BANDI.find((b) => b.id === id);
   return summary ? analisiDaSummary(summary) : null;
 }
 

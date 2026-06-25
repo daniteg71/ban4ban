@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { BandoSource, BandoSummary } from '@/lib/types';
 import { BandoCard } from './BandoCard';
 import { Owl } from './Owl';
+import { PipelineFunnel } from './PipelineFunnel';
 
 export function BandiSearch({ initial }: { initial: BandoSummary[] }) {
   const [bandi, setBandi] = useState<BandoSummary[]>(initial);
@@ -66,6 +67,8 @@ export function BandiSearch({ initial }: { initial: BandoSummary[] }) {
           </span>
         )}
       </div>
+
+      {source === 'scraping' && !loading && <PipelineFunnel />}
 
       {error && (
         <div className="rounded-xl border border-brand-bad/30 bg-brand-bad/10 px-4 py-3 text-sm text-brand-bad">

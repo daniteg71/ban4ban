@@ -7,11 +7,29 @@ Valutazione automatica della fattibilità e convenienza di un bando pubblico ris
 La dashboard ha due tasti:
 
 - **🔍 Cerca bandi online** — scraping sui portali appalti pubblici. In live, `lib/scraper.ts`
-  costruisce le query dalle aree del DNA, interroga i portali (API ufficiali dove possibile),
-  e valuta ogni bando con Gemini (punteggio 0–10). Ogni risultato ha un link al bando originale.
+  restituisce i bandi GREZZI (`RawTender[]`); a valutarli è il motore di matching (sotto).
+  Ogni risultato ha un link al bando originale.
 - **📁 Bandi da Drive** — i 4-5 PDF pre-caricati nella cartella Drive (path già esistente).
 
 L'API è `/api/bandi?source=scraping|drive`. In mock entrambe restituiscono dati finti.
+
+## Motore di matching — funnel a 3 stadi (`lib/pipeline/`)
+
+Il cuore "AI a consumo minimo": spende compute proporzionale alla promessa di ogni bando.
+È l'adattamento serverless del design Python (spaCy/KeyBERT/sentence-transformers/Redis), che NON
+gira su Vercel. Stesso principio, costo quasi nullo:
+
+| Stage | Cosa fa | Costo |
+|---|---|---|
+| 1 — `stage1-filters` | filtri rigidi (scadenza/budget/qualità parse) | €0 |
+| 2 — `stage2-scoring` | pre-score lessicale + embedding → **gate** → scoring completo a 5 dimensioni | ~€0 |
+| 3 — `stage3-llm` | LLM (la parte cara) **solo sui top-N**, con cost-guard | minimo |
+
+Le 5 dimensioni, i pesi, i tier e i bonus/malus sono in `lib/pipeline/scoring-rules.ts`
+(l'unico file da toccare per calibrare). I parser italiani (date/budget/regioni) sono in `parsers.ts`.
+La similarità semantica usa: in mock un proxy lessicale gratis, in live **Gemini `text-embedding-004`**
+(economico) — non un transformer locale. Il funnel è osservabile in dashboard: vedi quanti bandi
+sopravvivono a ogni stadio e quante chiamate LLM sono servite (`/api/match-report`).
 
 ## Come si aggiorna il DNA (decisione architetturale)
 

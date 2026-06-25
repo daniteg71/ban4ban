@@ -3,6 +3,13 @@ import type { BandoSummary } from '@/lib/types';
 import { Owl } from './Owl';
 import { ScoreGauge } from './ScoreGauge';
 
+const TIER_COLOR: Record<NonNullable<BandoSummary['tier']>, string> = {
+  HIGH: '#16a34a',
+  MEDIUM: '#d97706',
+  LOW: '#64748b',
+  EXCLUDED: '#dc2626',
+};
+
 export function BandoCard({ bando }: { bando: BandoSummary }) {
   return (
     <Link
@@ -23,6 +30,14 @@ export function BandoCard({ bando }: { bando: BandoSummary }) {
             >
               {bando.fonte === 'scraping' ? '🔍 online' : '📁 drive'}
             </span>
+            {bando.tier && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+                style={{ background: TIER_COLOR[bando.tier] }}
+              >
+                {bando.tier}
+              </span>
+            )}
           </div>
           <div className="mt-1 font-semibold text-slate-900 group-hover:text-brand transition-colors">
             {bando.titolo}
