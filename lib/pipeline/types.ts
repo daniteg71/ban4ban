@@ -81,15 +81,28 @@ export type ScoredTender = {
   risks: DetectedRisk[];
   llmInsights: LlmInsights | null;
   stageReached: PipelineStage;
+  ammissibile: boolean;
+  requisiti: import('./eligibility').Requisito[];
+};
+
+// Bando scartato a un certo stadio, col motivo leggibile (per verifica/trasparenza).
+export type ScartatoInfo = {
+  id: string;
+  titolo: string;
+  ente: string;
+  stadio: 'stage1' | 'pertinenza' | 'ammissibilita';
+  motivo: string;
 };
 
 // Metriche del funnel: quanti bandi sopravvivono a ogni stadio (per spiegare il trade-off).
 export type PipelineReport = {
   inputCount: number;
   stage1Passed: number;
-  stage2Passed: number;
+  pertinenti: number; // superano il gate di pertinenza (stage 2)
+  ammissibili: number; // rispettano i requisiti minimi
   stage3Enriched: number;
   llmCallsUsed: number;
-  results: ScoredTender[];
+  results: ScoredTender[]; // = compatibili (pertinenti + ammissibili), ordinati
+  scartati: ScartatoInfo[]; // tutti gli esclusi, con motivo
   debugScores?: { id: string; total: number; tier: string; dims: string }[];
 };

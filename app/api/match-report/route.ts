@@ -10,11 +10,11 @@ export async function GET() {
     return NextResponse.json({
       inputCount: r.inputCount,
       stage1Passed: r.stage1Passed,
-      stage2Passed: r.stage2Passed,
-      stage3Enriched: r.stage3Enriched,
+      pertinenti: r.pertinenti,
+      ammissibili: r.ammissibili,
+      compatibili: r.results.length,
       llmCallsUsed: r.llmCallsUsed,
-      resultsCount: r.results.length,
-      debugScores: r.debugScores,
+      scartati: r.scartati,
     });
   } catch (err) {
     return NextResponse.json(

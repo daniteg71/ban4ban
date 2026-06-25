@@ -1,48 +1,79 @@
-// Orchestratore del funnel a 3 stadi: il miglior trade-off tempo/affidabilità/costo.
+// Orchestratore del funnel. Obiettivo PRIMARIO: restituire esattamente i bandi COMPATIBILI,
+// cioè pertinenti con l'azienda E che rispettano i requisiti minimi (ammissibilità).
 //
 //   INPUT: DNA aziendale + lista bandi grezzi (dal Drive o dallo scraper)
-//   Stage 1  filtri rigidi gratis        -> scarta scaduti/fuori budget/illeggibili
-//   Stage 2  pre-score lessicale+embedding-> gate: prosegue solo chi supera la soglia
-//   Stage 2b scoring completo 5 dimensioni-> punteggio 0..10 + bonus/malus + tier
-//   Stage 3  LLM (caro) SOLO sui top-N    -> insight/explainability, con cost guard
+//   Stage 1      filtri rigidi gratis        -> scarta scaduti/fuori budget/illeggibili
+//   Pertinenza   pre-score lessicale+embedding-> scarta i bandi fuori dalle aree aziendali
+//   Ammissibilità requisiti minimi            -> scarta dove mancano certificazioni obblig./fatturato
+//   Scoring      5 dimensioni                 -> ordina i compatibili rimasti
+//   Stage 3      LLM (caro) SOLO sui top-N    -> insight, con cost guard
 //
-// Tornando un PipelineReport con le metriche del funnel (quanti sopravvivono a ogni stadio).
+// Ritorna i compatibili + la lista degli scartati col motivo (per verifica).
 
 import type { DnaSnapshot } from '../types';
 import { buildCompanyProfile } from './company-profile';
+import { checkRequisitiMinimi } from './eligibility';
 import { detectRisks, applyBonusMalus } from './rules';
-import { classifyTier, FILTERING } from './scoring-rules';
+import { classifyTier, FILTERING, STAGE2 } from './scoring-rules';
 import { stage1Filter } from './stage1-filters';
 import { fullScore, normalizeTender, preliminaryScore } from './stage2-scoring';
 import { CostGuard, eligibleForLlm, llmEnrich } from './stage3-llm';
-import { STAGE2 } from './scoring-rules';
 import { resolveRegion } from './parsers';
-import type { PipelineReport, RawTender, ScoredTender } from './types';
+import type { PipelineReport, ScartatoInfo, ScoredTender } from './types';
+
+const MOTIVO_STAGE1: Record<string, string> = {
+  deadline_expired: 'Scadenza già passata',
+  deadline_too_close: 'Scadenza troppo ravvicinata',
+  budget_too_low: 'Importo sotto la soglia minima',
+  budget_too_high: 'Importo oltre la soglia massima',
+  low_quality_parse: 'Dati del bando insufficienti',
+};
 
 export async function runMatchingPipeline(
   dna: DnaSnapshot,
-  rawTenders: RawTender[],
+  rawTenders: import('./types').RawTender[],
   today: Date = new Date()
 ): Promise<PipelineReport> {
   const profile = await buildCompanyProfile(dna);
   const guard = new CostGuard();
+  const scartati: ScartatoInfo[] = [];
+  const scarta = (raw: { externalId: string; title: string; ente?: string }, stadio: ScartatoInfo['stadio'], motivo: string) =>
+    scartati.push({ id: raw.externalId, titolo: raw.title, ente: raw.ente ?? '—', stadio, motivo });
 
   let stage1Passed = 0;
-  let stage2Passed = 0;
+  let pertinenti = 0;
+  let ammissibili = 0;
 
-  // STAGE 1 + STAGE 2 (pre-score + scoring completo) su tutti i sopravvissuti
   const scored: ScoredTender[] = [];
   for (const raw of rawTenders) {
+    // STAGE 1 — filtri rigidi
     const s1 = stage1Filter(raw, today);
-    if (!s1.passed) continue;
+    if (!s1.passed) {
+      scarta(raw, 'stage1', MOTIVO_STAGE1[s1.reason] ?? s1.reason);
+      continue;
+    }
     stage1Passed++;
 
     const region = resolveRegion(raw.locationRaw);
     const tender = await normalizeTender(raw, s1.deadline, s1.daysToDeadline, s1.budget, region);
-    const pre = await preliminaryScore(tender, profile);
-    if (pre.score < STAGE2.gateThreshold) continue; // GATE: non sprechiamo scoring completo
-    stage2Passed++;
 
+    // PERTINENZA — il bando è nelle nostre aree? (pre-score lessicale + embedding)
+    const pre = await preliminaryScore(tender, profile);
+    if (pre.score < STAGE2.gateThreshold) {
+      scarta(raw, 'pertinenza', 'Non pertinente con le aree aziendali');
+      continue;
+    }
+    pertinenti++;
+
+    // AMMISSIBILITÀ — rispettiamo i requisiti minimi obbligatori?
+    const elig = checkRequisitiMinimi(tender, dna);
+    if (!elig.ammissibile) {
+      scarta(raw, 'ammissibilita', `Requisito minimo non soddisfatto: ${elig.motivoEsclusione}`);
+      continue;
+    }
+    ammissibili++;
+
+    // SCORING — ordina i compatibili rimasti
     const { dimensions, missingCertifications } = fullScore(tender, profile, pre.tenderEmbedding, today);
     const base = dimensions.reduce((s, d) => s + d.score * d.weight, 0);
     const { bonuses, maluses, delta } = applyBonusMalus(tender, profile, missingCertifications);
@@ -64,8 +95,14 @@ export async function runMatchingPipeline(
       risks: detectRisks(tender, missingCertifications, capacity, tender.budget),
       llmInsights: null,
       stageReached: '2_scored',
+      ammissibile: true,
+      requisiti: elig.requisiti,
     });
   }
+
+  // i compatibili, ordinati per punteggio
+  scored.sort((a, b) => b.totalScore - a.totalScore);
+  const results = scored.slice(0, FILTERING.maxResultsPerRun);
 
   const debugScores = scored.map((s) => ({
     id: s.tender.raw.externalId,
@@ -74,16 +111,10 @@ export async function runMatchingPipeline(
     dims: s.dimensionScores.map((d) => `${d.key.slice(0, 4)}:${d.score.toFixed(1)}`).join(' '),
   }));
 
-  // ordina per punteggio e scarta gli EXCLUDED
-  scored.sort((a, b) => b.totalScore - a.totalScore);
-  const filtered = scored
-    .filter((s) => s.tier !== 'EXCLUDED' && s.totalScore >= FILTERING.minScoreThreshold)
-    .slice(0, FILTERING.maxResultsPerRun);
-
-  // STAGE 3 — LLM solo sui top eleggibili, finché il cost guard lo consente
+  // STAGE 3 — LLM solo sui top compatibili, finché il cost guard lo consente
   let enriched = 0;
-  for (let i = 0; i < filtered.length; i++) {
-    const s = filtered[i];
+  for (let i = 0; i < results.length; i++) {
+    const s = results[i];
     if (!eligibleForLlm(s.totalScore, i) || !guard.canCall()) continue;
     s.llmInsights = await llmEnrich(s.tender, profile, s.missingCertifications);
     s.stageReached = '3_enriched';
@@ -94,10 +125,12 @@ export async function runMatchingPipeline(
   return {
     inputCount: rawTenders.length,
     stage1Passed,
-    stage2Passed,
+    pertinenti,
+    ammissibili,
     stage3Enriched: enriched,
     llmCallsUsed: guard.callsUsed,
-    results: filtered,
+    results,
+    scartati,
     debugScores,
   };
 }

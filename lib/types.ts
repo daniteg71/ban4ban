@@ -45,6 +45,14 @@ export type BandoSummary = {
   tier?: 'HIGH' | 'MEDIUM' | 'LOW' | 'EXCLUDED';
 };
 
+export type RequisitoMinimo = {
+  nome: string;
+  richiesto: string;
+  posseduto: string;
+  soddisfatto: boolean;
+  bloccante: boolean;
+};
+
 export type AnalisiBando = {
   bando: BandoSummary;
   criteri: Criterio[];
@@ -52,6 +60,9 @@ export type AnalisiBando = {
   analisiCritica: string;
   checklist: ChecklistItem[];
   raccomandazione: 'partecipare' | 'partecipare-con-riserva' | 'non-partecipare';
+  // Requisiti minimi (ammissibilità): se tutti i bloccanti sono soddisfatti -> compatibile.
+  requisiti?: RequisitoMinimo[];
+  ammissibile?: boolean;
 };
 
 export type DnaSnapshot = {

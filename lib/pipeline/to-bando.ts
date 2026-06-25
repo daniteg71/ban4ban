@@ -85,5 +85,7 @@ export function toAnalisi(s: ScoredTender): AnalisiBando {
     analisiCritica: insightTxt,
     checklist,
     raccomandazione: racc,
+    requisiti: s.requisiti,
+    ammissibile: s.ammissibile,
   };
 }

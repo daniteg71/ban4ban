@@ -22,7 +22,7 @@ export const MOCK_RAW_TENDERS: RawTender[] = [
     ente: 'Consip / MEPA',
     area: 'Data & Automation',
     description:
-      'Affidamento di servizi di sviluppo software, implementazione di pipeline di data analytics e automazione dei processi documentali. Richiesta certificazione ISO 27001 e ISO 9001. Esperienza in integrazione di sistemi.',
+      'Affidamento di servizi di sviluppo software, implementazione di pipeline di data analytics e automazione dei processi documentali. Richiesta certificazione ISO 27001 obbligatoria; la ISO 9001 è considerata gradita. Esperienza in integrazione di sistemi.',
     deadlineRaw: plusDays(98),
     budgetRaw: '€ 750.000,00',
     cpvCodes: ['72000000', '72500000'],
@@ -69,6 +69,36 @@ export const MOCK_RAW_TENDERS: RawTender[] = [
     budgetRaw: '€ 130.000,00',
     cpvCodes: ['72600000'],
     locationRaw: 'Veneto',
+  },
+  // --- NON COMPATIBILE: requisito minimo fatturato (azienda 1.85M < 3M richiesto) ---
+  {
+    externalId: 'online-fatturato-109',
+    sourceId: 'portale-nazionale',
+    url: 'https://example.org/bando109',
+    title: 'Sviluppo software e data platform per ente nazionale',
+    ente: 'Agenzia Nazionale',
+    area: 'Data & Automation',
+    description:
+      'Realizzazione di una data platform per analytics e automazione dei processi: sviluppo software, integrazione di sistemi, pipeline dati e machine learning. Requisito di partecipazione: fatturato globale annuo non inferiore a € 3.000.000. Certificazione ISO 27001 gradita.',
+    deadlineRaw: '12 novembre 2026',
+    budgetRaw: '€ 900.000,00',
+    cpvCodes: ['72000000'],
+    locationRaw: 'Lazio',
+  },
+  // --- NON COMPATIBILE: certificazione obbligatoria mancante (azienda non ha ISO 9001) ---
+  {
+    externalId: 'online-iso9001-110',
+    sourceId: 'portale-regionale',
+    url: 'https://example.org/bando110',
+    title: 'Implementazione sistema di automazione documentale',
+    ente: 'Regione Toscana',
+    area: 'Data & Automation',
+    description:
+      'Implementazione e sviluppo software di un sistema di automazione documentale con data analytics e integrazione di sistemi cloud. È richiesta, a pena di esclusione, la certificazione ISO 9001 obbligatoria.',
+    deadlineRaw: '18 ottobre 2026',
+    budgetRaw: '€ 180.000,00',
+    cpvCodes: ['72000000'],
+    locationRaw: 'Toscana',
   },
   // --- SCARTATO Stage 1: scaduto ---
   {

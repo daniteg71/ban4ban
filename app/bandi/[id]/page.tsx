@@ -19,7 +19,7 @@ export default async function BandoPage({ params }: { params: { id: string } }) 
   const analisi = await getAnalisi(params.id);
   if (!analisi) notFound();
 
-  const { bando, criteri, matchTable, analisiCritica, checklist, raccomandazione } = analisi;
+  const { bando, criteri, matchTable, analisiCritica, checklist, raccomandazione, requisiti, ammissibile } = analisi;
   const r = raccLabel[raccomandazione];
 
   return (
@@ -62,6 +62,48 @@ export default async function BandoPage({ params }: { params: { id: string } }) 
           <ExportButton />
         </div>
       </header>
+
+      {requisiti && requisiti.length > 0 && (
+        <section className="rounded-2xl glass p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold">Requisiti minimi (ammissibilità)</h2>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                ammissibile ? 'bg-brand-good/15 text-brand-good' : 'bg-brand-bad/15 text-brand-bad'
+              }`}
+            >
+              {ammissibile ? '✓ Compatibile' : '✗ Non ammissibile'}
+            </span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500 border-b border-slate-200">
+                <th className="py-2">Requisito</th>
+                <th className="py-2">Richiesto</th>
+                <th className="py-2">Azienda</th>
+                <th className="py-2 w-24 text-right">Esito</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requisiti.map((req, i) => (
+                <tr key={i} className="border-b border-slate-100">
+                  <td className="py-2 font-medium">
+                    {req.nome}
+                    {req.bloccante && <span className="ml-1 text-[10px] text-brand-bad">obblig.</span>}
+                  </td>
+                  <td className="py-2 text-slate-700">{req.richiesto}</td>
+                  <td className="py-2 text-slate-700">{req.posseduto}</td>
+                  <td className="py-2 text-right">
+                    <span className={req.soddisfatto ? 'text-brand-good' : 'text-brand-bad'}>
+                      {req.soddisfatto ? '✓' : '✗'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       <section className="rounded-2xl glass p-6">
         <h2 className="font-semibold mb-4">Criteri di valutazione ({criteri.length})</h2>
