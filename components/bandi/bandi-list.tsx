@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   Clock,
   ExternalLink,
+  Gauge,
   History,
   Loader2,
   MapPin,
@@ -17,7 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Grant } from '@/lib/db/schema'
 
-type HistoryItem = { id: number; at: string; found: number; scraped: number }
+type HistoryItem = { id: number; at: string; found: number; scraped: number; nuovi: number; giaNoti: number }
 
 const STEPS = [
   'Connessione ai portali ufficiali…',
@@ -52,7 +53,9 @@ export function BandiList({
     startTransition(async () => {
       try {
         const res = await searchGrants()
-        setInfo(`${res.found} bandi trovati dai portali ufficiali.`)
+        setInfo(
+          `${res.found} bandi dai portali ufficiali · ${res.nuovi} nuovi, ${res.giaNoti} già noti (riuso cache: nessun ricalcolo AI).`
+        )
         router.push('/bandi')
         router.refresh()
       } catch {
@@ -64,6 +67,7 @@ export function BandiList({
   }
 
   const runParam = activeRunId ? `&run=${activeRunId}` : ''
+  const activeRun = activeRunId ? history.find((h) => h.id === activeRunId) : history[0]
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -113,6 +117,24 @@ export function BandiList({
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Anti-spreco token: nuovi vs già noti */}
+        {!isPending && activeRun && total > 0 && (
+          <div className="glass flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl p-4 text-sm">
+            <span className="flex items-center gap-2 font-semibold">
+              <Gauge className="size-4 text-accent" /> Efficienza token
+            </span>
+            <span className="text-muted-foreground">
+              <span className="font-medium text-foreground">{activeRun.nuovi}</span> nuovi (da analizzare)
+            </span>
+            <span className="text-muted-foreground">
+              <span className="font-medium text-ok">{activeRun.giaNoti}</span> già noti (riuso cache, 0 token)
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Più usi l’app, più bandi sono in cache → meno token a ogni ricerca.
+            </span>
           </div>
         )}
 

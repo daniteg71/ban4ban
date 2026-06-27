@@ -79,5 +79,9 @@ export type SearchRun = {
   at: Date
   found: number
   scraped: number
+  /** bandi mai visti prima (andrebbero all'AI) */
+  nuovi: number
+  /** bandi già noti (riuso cache, zero token) */
+  giaNoti: number
   grants: Grant[]
 }

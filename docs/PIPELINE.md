@@ -98,16 +98,21 @@ token nelle chiamate API. (Vedi anche `docs/dna_schema.json`.)
 
 **Legenda:** 🟢 fatto · 🟡 parziale/hook · 🔴 in attesa dei moduli del team.
 
-### Nota fonti bandi (Italia vs UE)
-- **Attive (scrapate a ogni ricerca):** MIMIT (RSS + elenco) e **Invitalia** — entrambe nazionali e
-  server-rendered, scrapabili con `fetch`+`cheerio` (zero token, zero browser headless).
-- **Non scrapabili con fetch semplice:** `incentivi.gov.it` e i portali **regionali** sono app
-  JavaScript (caricano i dati lato client) → servirebbe un headless browser (più pesante/costoso).
-- **Bandi europei (UE):** stanno su un portale diverso (**EU Funding & Tenders**), con struttura e
-  logica molto diverse dall'Italia (consorzi multi-paese, niente codice ATECO, budget/scadenze in
-  formato proprio). L'API ufficiale (SEDIA) va integrata a parte con la sua key; dal nostro ambiente
-  di test risponde 500, quindi va collegata e provata dall'ambiente di produzione. La normalizzazione
-  UE → JSON uniforme e il filtro di compatibilità UE sono un modulo dedicato (diverso da quello italiano).
+### Fonti bandi attive (`lib/scrape.ts`, scrapate a ogni ricerca, zero token)
+- **Nazionali:** **MIMIT** (RSS + elenco) e **Invitalia** — catalogo strutturato.
+- **Regionali** (bandi che spesso NON stanno nei portali nazionali), RSS filtrati per parole-chiave bando:
+  **Lazio Innova**, **Sviluppo Toscana**, **Sardegna Impresa**.
+- **Esclusi per scelta/tecnica:** `incentivi.gov.it` e molti portali regionali sono **app JavaScript**
+  (servirebbe headless browser). I **bandi UE** (EU Funding & Tenders) sono **fuori scope**.
+
+### Meccanismo ANTI-SPRECO token (`lib/token-cache.ts`)
+La parte cara è l'AI (Step 5/6). Per spendere il minimo man mano che l'app si usa:
+1. ogni bando ha un **hash** stabile (`source+link`); ogni DNA una **versione** (`dnaVersion`).
+2. i risultati AI si memorizzano per chiave **`hash:versioneDNA`** (`withScoreCache`).
+3. a ogni ricerca solo i bandi **NUOVI** andrebbero all'AI; i **già noti** riusano la cache (0 token).
+→ Più si usa l'app, più bandi sono in cache: il costo per ricerca tende a **zero** (finché il DNA non
+cambia: al cambio cambia la versione e si ricalcola solo allora). La UI mostra "X nuovi · Y già noti".
+*(Cache in-memory: per risparmio permanente cross-sessione spostarla su KV/DB.)*
 
 ### Regole d'oro (sempre valide)
 1. **Token zero finché possibile:** lo scraping (Step 3) e il filtro requisiti minimi (Step 4) NON usano AI. L'AI parte solo allo Step 5, sui pochi bandi sopravvissuti.

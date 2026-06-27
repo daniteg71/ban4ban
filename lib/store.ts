@@ -12,6 +12,8 @@ const store = g.__jesapRuns ?? (g.__jesapRuns = { runs: [], seq: { grant: 0, run
 export function addSearchRun(
   found: number,
   scraped: number,
+  nuovi: number,
+  giaNoti: number,
   grantsData: Omit<Grant, 'id' | 'companyId' | 'createdAt'>[]
 ): SearchRun {
   const run: SearchRun = {
@@ -20,6 +22,8 @@ export function addSearchRun(
     at: new Date(),
     found,
     scraped,
+    nuovi,
+    giaNoti,
     grants: grantsData.map((gr) => ({
       ...gr,
       id: ++store.seq.grant,

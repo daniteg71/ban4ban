@@ -6,6 +6,7 @@ import { scrapeGrants } from '@/lib/scrape'
 import { checkDriveConnection, type DriveStatus } from '@/lib/drive'
 import { COMPANY, filterCompatible, placeholderDnaFromFiles, rewriteDnaFromDrive } from '@/lib/company-config'
 import { addSearchRun, getLatestRun, getRun, getRuns } from '@/lib/store'
+import { classifyNewVsKnown, dnaVersion, registerSeen } from '@/lib/token-cache'
 
 const PAGE_SIZE = 8
 
@@ -47,11 +48,17 @@ export async function searchGrants() {
   // 3) compatibilità (pass-through finché non arriva l'algoritmo del team)
   grants = filterCompatible(dna, grants as Grant[])
 
+  // 3b) ANTI-SPRECO TOKEN: quanti bandi sono nuovi (andrebbero all'AI) vs già noti (riuso cache).
+  // Lo scoring del team userà withScoreCache(hash, dnaVersion(dna), ...) per spendere solo sui nuovi.
+  void dnaVersion(dna)
+  const { nuovi, giaNoti } = classifyNewVsKnown(raw)
+  registerSeen(raw, new Date().toISOString())
+
   // 4) storico
-  addSearchRun(grants.length, raw.length, grants)
+  addSearchRun(grants.length, raw.length, nuovi.length, giaNoti.length, grants)
 
   revalidatePath('/bandi')
-  return { found: grants.length, scraped: raw.length }
+  return { found: grants.length, scraped: raw.length, nuovi: nuovi.length, giaNoti: giaNoti.length }
 }
 
 // Bandi paginati (8 per pagina) della ricerca corrente o di una dello storico.
@@ -69,12 +76,14 @@ export async function getGrantsPage(
 }
 
 export async function getSearchHistory(): Promise<
-  { id: number; at: string; found: number; scraped: number }[]
+  { id: number; at: string; found: number; scraped: number; nuovi: number; giaNoti: number }[]
 > {
   return getRuns().map((r) => ({
     id: r.id,
     at: r.at.toISOString(),
     found: r.found,
     scraped: r.scraped,
+    nuovi: r.nuovi,
+    giaNoti: r.giaNoti,
   }))
 }
