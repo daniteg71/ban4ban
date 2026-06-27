@@ -21,12 +21,33 @@ export async function rewriteDnaFromDrive(currentDna: CompanyDna | null): Promis
 }
 
 // ----------------------------------------------------------------------------
-// HOOK 2 — algoritmo di COMPATIBILITÀ (arriverà dal team).
-// Decide quali bandi sono compatibili col DNA. Per ora PASS-THROUGH (nessun filtro finto):
-// mostra tutti i bandi reali trovati. Quando arriverà l'algoritmo, si filtra qui.
+// HOOK 2 — filtro REQUISITI MINIMI / compatibilità (Step 4).
+// Filtro booleano, gratis (niente AI): separa i bandi COMPATIBILI da quelli NON ammissibili.
+// Solo i compatibili andranno all'AI (Step 5) -> risparmio token.
+//
+// REGOLA PLACEHOLDER (da sostituire con l'algoritmo del team): scarta i bandi di settori
+// palesemente non attinenti all'azienda. Il vero confronto requisiti-bando ↔ DNA (ATECO,
+// certificazioni, fatturato) si aggancia qui quando arriva l'estrazione DNA + normalizzazione bandi.
 // ----------------------------------------------------------------------------
-export function filterCompatible<T extends Grant>(_dna: CompanyDna | null, grants: T[]): T[] {
-  return grants
+const SETTORI_NON_ATTINENTI: { rx: RegExp; motivo: string }[] = [
+  { rx: /editori|emittenti|radiofonic|televisiv|editrici|giornalis/i, motivo: 'Settore editoria/media non attinente' },
+  { rx: /agricol|pesca|itticolt|zootecn|forestal/i, motivo: 'Settore agricoltura/pesca non attinente' },
+  { rx: /spettacolo|cinema|teatr|festival/i, motivo: 'Settore spettacolo/cultura non attinente' },
+]
+
+export function filterCompatible<T extends Grant>(
+  _dna: CompanyDna | null,
+  grants: T[]
+): { compatibili: T[]; scartati: { grant: T; motivo: string }[] } {
+  const compatibili: T[] = []
+  const scartati: { grant: T; motivo: string }[] = []
+  for (const g of grants) {
+    const hay = `${g.title} ${g.description ?? ''}`
+    const match = SETTORI_NON_ATTINENTI.find((s) => s.rx.test(hay))
+    if (match) scartati.push({ grant: g, motivo: match.motivo })
+    else compatibili.push(g)
+  }
+  return { compatibili, scartati }
 }
 
 // DNA "segnaposto" minimo finché non arriva quello reale dall'automazione Drive.

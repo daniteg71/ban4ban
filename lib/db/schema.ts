@@ -72,6 +72,14 @@ export type GrantStrategy = {
 // File del Drive aziendale.
 export type DriveFile = { id: string; name: string; mimeType: string }
 
+// Bando scartato dal filtro requisiti minimi (NON valutato dall'AI -> 0 token), col motivo.
+export type ScartatoGrant = {
+  title: string
+  sourceName: string | null
+  sourceUrl: string | null
+  motivo: string
+}
+
 // Una ricerca salvata nello storico.
 export type SearchRun = {
   id: number
@@ -84,4 +92,6 @@ export type SearchRun = {
   /** bandi già noti (riuso cache, zero token) */
   giaNoti: number
   grants: Grant[]
+  /** non ammissibili: scartati dal filtro requisiti minimi, NON valutati dall'AI (0 token) */
+  scartati: ScartatoGrant[]
 }

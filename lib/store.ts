@@ -1,5 +1,5 @@
 import 'server-only'
-import type { Grant, SearchRun } from '@/lib/db/schema'
+import type { Grant, ScartatoGrant, SearchRun } from '@/lib/db/schema'
 
 // Persistenza in-memory mono-azienda (MVP, niente DB). Tiene SOLO lo storico ricerche.
 // NB: si azzera a freddo sul serverless. Per persistenza reale serve un DB.
@@ -14,7 +14,8 @@ export function addSearchRun(
   scraped: number,
   nuovi: number,
   giaNoti: number,
-  grantsData: Omit<Grant, 'id' | 'companyId' | 'createdAt'>[]
+  grantsData: Omit<Grant, 'id' | 'companyId' | 'createdAt'>[],
+  scartati: ScartatoGrant[]
 ): SearchRun {
   const run: SearchRun = {
     id: ++store.seq.run,
@@ -24,6 +25,7 @@ export function addSearchRun(
     scraped,
     nuovi,
     giaNoti,
+    scartati,
     grants: grantsData.map((gr) => ({
       ...gr,
       id: ++store.seq.grant,

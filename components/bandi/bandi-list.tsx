@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowRight,
+  Ban,
   Clock,
   ExternalLink,
   Gauge,
@@ -17,9 +18,9 @@ import {
 import { searchGrants } from '@/app/actions/company'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import type { Grant } from '@/lib/db/schema'
+import type { Grant, ScartatoGrant } from '@/lib/db/schema'
 
-type HistoryItem = { id: number; at: string; found: number; scraped: number; nuovi: number; giaNoti: number }
+type HistoryItem = { id: number; at: string; found: number; scraped: number; nuovi: number; giaNoti: number; scartati: number }
 
 const STEPS = [
   'Connessione ai portali ufficiali…',
@@ -33,6 +34,7 @@ export function BandiList({
   totalPages,
   total,
   history,
+  scartati,
   activeRunId,
 }: {
   grants: Grant[]
@@ -40,12 +42,14 @@ export function BandiList({
   totalPages: number
   total: number
   history: HistoryItem[]
+  scartati: ScartatoGrant[]
   activeRunId?: number
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState(0)
   const [info, setInfo] = useState<string | null>(null)
+  const [showScartati, setShowScartati] = useState(false)
 
   function runSearch() {
     setInfo(null)
@@ -55,7 +59,7 @@ export function BandiList({
       try {
         const res = await searchGrants()
         setInfo(
-          `${res.found} bandi dai portali ufficiali · ${res.nuovi} nuovi, ${res.giaNoti} già noti (riuso cache: nessun ricalcolo AI).`
+          `${res.found} compatibili · ${res.scartati} non ammissibili (scartati gratis, 0 token) · ${res.nuovi} nuovi, ${res.giaNoti} già noti (riuso cache).`
         )
         router.push('/bandi')
         router.refresh()
@@ -131,10 +135,13 @@ export function BandiList({
               <span className="font-medium text-foreground">{activeRun.nuovi}</span> nuovi (da analizzare)
             </span>
             <span className="text-muted-foreground">
-              <span className="font-medium text-ok">{activeRun.giaNoti}</span> già noti (riuso cache, 0 token)
+              <span className="font-medium text-ok">{activeRun.giaNoti}</span> già noti (cache, 0 token)
+            </span>
+            <span className="text-muted-foreground">
+              <span className="font-medium text-danger">{activeRun.scartati}</span> non ammissibili (scartati gratis)
             </span>
             <span className="text-xs text-muted-foreground">
-              Più usi l’app, più bandi sono in cache → meno token a ogni ricerca.
+              All’AI vanno solo i compatibili nuovi → meno token a ogni ricerca.
             </span>
           </div>
         )}
@@ -231,6 +238,42 @@ export function BandiList({
               </div>
             )}
           </>
+        )}
+
+        {/* Non ammissibili (scartati dal filtro requisiti minimi, NON valutati = 0 token) */}
+        {!isPending && scartati.length > 0 && (
+          <div className="glass rounded-2xl p-4">
+            <button
+              onClick={() => setShowScartati((v) => !v)}
+              className="flex w-full items-center gap-2 text-sm font-semibold"
+            >
+              <Ban className="size-4 text-danger" />
+              Non ammissibili ({scartati.length})
+              <span className="font-normal text-muted-foreground">
+                — scartati senza spendere token AI
+              </span>
+              <span className="ml-auto text-muted-foreground">{showScartati ? '▾' : '▸'}</span>
+            </button>
+            {showScartati && (
+              <ul className="mt-3 flex flex-col gap-2">
+                {scartati.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 rounded-lg bg-secondary/30 px-3 py-2 text-sm">
+                    <span className="mt-0.5 text-danger">✕</span>
+                    <span className="flex-1">
+                      <span className="font-medium">{s.title}</span>
+                      {s.sourceName && <span className="text-muted-foreground"> · {s.sourceName}</span>}
+                      <span className="block text-xs text-muted-foreground">{s.motivo}</span>
+                    </span>
+                    {s.sourceUrl && (
+                      <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
     </div>

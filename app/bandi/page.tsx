@@ -1,6 +1,6 @@
 import { AppNav } from '@/components/app-nav'
 import { BandiList } from '@/components/bandi/bandi-list'
-import { getCompanyInfo, getGrantsPage, getSearchHistory } from '@/app/actions/company'
+import { getCompanyInfo, getGrantsPage, getScartati, getSearchHistory } from '@/app/actions/company'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,10 +13,11 @@ export default async function BandiPage({
   const pageNum = page ? Math.max(1, Number.parseInt(page, 10) || 1) : 1
   const runId = run ? Number.parseInt(run, 10) : undefined
 
-  const [{ company }, paged, history] = await Promise.all([
+  const [{ company }, paged, history, scartati] = await Promise.all([
     getCompanyInfo(),
     getGrantsPage(pageNum, Number.isFinite(runId) ? runId : undefined),
     getSearchHistory(),
+    getScartati(Number.isFinite(runId) ? runId : undefined),
   ])
 
   return (
@@ -29,6 +30,7 @@ export default async function BandiPage({
           totalPages={paged.totalPages}
           total={paged.total}
           history={history}
+          scartati={scartati}
           activeRunId={Number.isFinite(runId) ? runId : undefined}
         />
       </div>

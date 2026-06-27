@@ -46,20 +46,33 @@ export async function searchGrants() {
     strategy: null,
   }))
 
-  // 3) compatibilità (pass-through finché non arriva l'algoritmo del team)
-  grants = filterCompatible(dna, grants as Grant[])
+  // 3) FILTRO REQUISITI MINIMI (Step 4, booleano, GRATIS): separa compatibili da non ammissibili.
+  // Solo i compatibili andranno all'AI -> risparmio token. I non ammissibili: mostrati col motivo, 0 token.
+  const { compatibili, scartati } = filterCompatible(dna, grants as Grant[])
+  const scartatiData = scartati.map((s) => ({
+    title: s.grant.title,
+    sourceName: s.grant.sourceName,
+    sourceUrl: s.grant.sourceUrl,
+    motivo: s.motivo,
+  }))
 
-  // 3b) ANTI-SPRECO TOKEN: quanti bandi sono nuovi (andrebbero all'AI) vs già noti (riuso cache).
+  // 3b) ANTI-SPRECO TOKEN: nuovi vs già noti, calcolato SOLO sui compatibili (gli unici che andrebbero all'AI).
   // Lo scoring del team userà withScoreCache(hash, dnaVersion(dna), ...) per spendere solo sui nuovi.
   void dnaVersion(dna)
-  const { nuovi, giaNoti } = classifyNewVsKnown(raw)
-  registerSeen(raw, new Date().toISOString())
+  const { nuovi, giaNoti } = classifyNewVsKnown(compatibili)
+  registerSeen(compatibili, new Date().toISOString())
 
   // 4) storico
-  addSearchRun(grants.length, raw.length, nuovi.length, giaNoti.length, grants)
+  addSearchRun(compatibili.length, raw.length, nuovi.length, giaNoti.length, compatibili, scartatiData)
 
   revalidatePath('/bandi')
-  return { found: grants.length, scraped: raw.length, nuovi: nuovi.length, giaNoti: giaNoti.length }
+  return {
+    found: compatibili.length,
+    scraped: raw.length,
+    scartati: scartatiData.length,
+    nuovi: nuovi.length,
+    giaNoti: giaNoti.length,
+  }
 }
 
 // Bandi paginati (8 per pagina) della ricerca corrente o di una dello storico.
@@ -86,7 +99,7 @@ export async function getStrategy(grantId: number): Promise<ExecutionStrategy | 
 }
 
 export async function getSearchHistory(): Promise<
-  { id: number; at: string; found: number; scraped: number; nuovi: number; giaNoti: number }[]
+  { id: number; at: string; found: number; scraped: number; nuovi: number; giaNoti: number; scartati: number }[]
 > {
   return getRuns().map((r) => ({
     id: r.id,
@@ -95,5 +108,12 @@ export async function getSearchHistory(): Promise<
     scraped: r.scraped,
     nuovi: r.nuovi,
     giaNoti: r.giaNoti,
+    scartati: r.scartati.length,
   }))
+}
+
+// Non ammissibili (scartati dal filtro requisiti minimi) della ricerca corrente o di una dello storico.
+export async function getScartati(runId?: number): Promise<import('@/lib/db/schema').ScartatoGrant[]> {
+  const run = runId ? getRun(runId) : getLatestRun()
+  return run?.scartati ?? []
 }
