@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
+  ArrowRight,
   Clock,
   ExternalLink,
   Gauge,
@@ -171,13 +172,7 @@ export function BandiList({
             </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {grants.map((g) => (
-                <a
-                  key={g.id}
-                  href={g.sourceUrl ?? '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group glass rounded-2xl p-5 transition-all hover:border-primary/40 hover:shadow-xl"
-                >
+                <div key={g.id} className="glass flex flex-col rounded-2xl p-5">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {g.region && (
                       <Badge variant="secondary" className="gap-1">
@@ -187,15 +182,25 @@ export function BandiList({
                     )}
                     {g.sourceName && <Badge variant="secondary">{g.sourceName}</Badge>}
                   </div>
-                  <h3 className="mt-2 text-pretty text-base font-semibold leading-snug">{g.title}</h3>
+                  <Link href={`/bandi/${g.id}`} className="group">
+                    <h3 className="mt-2 text-pretty text-base font-semibold leading-snug group-hover:text-accent">
+                      {g.title}
+                    </h3>
+                  </Link>
                   {g.description && (
                     <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground">{g.description}</p>
                   )}
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent">
-                    Apri sul sito ufficiale
-                    <ExternalLink className="size-3.5" />
-                  </span>
-                </a>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
+                    <Link href={`/bandi/${g.id}`} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+                      Strategia <ArrowRight className="size-3.5" />
+                    </Link>
+                    {g.sourceUrl && (
+                      <a href={g.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                        Sito ufficiale <ExternalLink className="size-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
 

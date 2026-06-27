@@ -93,8 +93,8 @@ token nelle chiamate API. (Vedi anche `docs/dna_schema.json`.)
 | 2 — Modifica DNA (incrementale) | 🔴 Da fare | bottone + parsing incrementale → **Gustavo** |
 | 3 — Scraping bandi ufficiali | 🟢 **Fatto** (MIMIT + Invitalia reali, indipendente dal DNA) | `lib/scrape.ts`. EU/altri = nota sotto. Da fare: normalizzazione campi (ATECO/scadenze/budget) |
 | 4 — Filtro requisiti minimi | 🟡 Hook pass-through | `filterCompatible()` in `lib/company-config.ts` → **algoritmo del team** |
-| 5 — Scoring 1–10 | 🔴 Volutamente assente | in attesa del modulo di valutazione del team |
-| 6 — Strategia scaricabile | 🔴 Volutamente assente | in attesa del modulo strategia del team |
+| 5 — Scoring 1–10 | 🔴 Volutamente assente | in attesa del modulo del team. Cache pronta: `withScoreCache()` |
+| 6 — Strategia scaricabile | 🟡 **Scheletro + PDF fatti**; i campi AI li riempie il team | contratto `lib/strategy.ts` (`ExecutionStrategy`), vista stampabile `components/bandi/strategy-view.tsx` (`/bandi/[id]` + "Scarica PDF" via print). Il team riempie `score`/`probabilita`/`matching` |
 
 **Legenda:** 🟢 fatto · 🟡 parziale/hook · 🔴 in attesa dei moduli del team.
 

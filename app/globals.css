@@ -204,6 +204,22 @@
   }
 }
 
+/* Stampa / export PDF: foglio pulito su sfondo bianco, niente UI di contorno */
+@media print {
+  .no-print { display: none !important; }
+  .aurora-bg::before { display: none !important; }
+  html, body { background: #ffffff !important; color: #111 !important; }
+  .strategy-sheet {
+    background: #fff !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    color: #111 !important;
+  }
+  .strategy-sheet * { color: #111 !important; }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

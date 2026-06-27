@@ -5,8 +5,9 @@ import type { Grant } from '@/lib/db/schema'
 import { scrapeGrants } from '@/lib/scrape'
 import { checkDriveConnection, type DriveStatus } from '@/lib/drive'
 import { COMPANY, filterCompatible, placeholderDnaFromFiles, rewriteDnaFromDrive } from '@/lib/company-config'
-import { addSearchRun, getLatestRun, getRun, getRuns } from '@/lib/store'
+import { addSearchRun, findGrant, getLatestRun, getRun, getRuns } from '@/lib/store'
 import { classifyNewVsKnown, dnaVersion, registerSeen } from '@/lib/token-cache'
+import { buildStrategy, type ExecutionStrategy } from '@/lib/strategy'
 
 const PAGE_SIZE = 8
 
@@ -73,6 +74,15 @@ export async function getGrantsPage(
   const p = Math.min(Math.max(1, page), totalPages)
   const grants = all.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE)
   return { grants, page: p, totalPages, total }
+}
+
+// Output strategico (Step 6) per un bando. Costruito dai dati reali; i campi AI sono segnaposto
+// finché non arriva il modulo di valutazione del team.
+export async function getStrategy(grantId: number): Promise<ExecutionStrategy | null> {
+  const grant = findGrant(grantId)
+  if (!grant) return null
+  const { dna } = await getCompanyInfo()
+  return buildStrategy(dna, grant, new Date().toISOString())
 }
 
 export async function getSearchHistory(): Promise<

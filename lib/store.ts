@@ -46,3 +46,11 @@ export function getLatestRun(): SearchRun | null {
 export function getRun(runId: number): SearchRun | null {
   return store.runs.find((r) => r.id === runId) ?? null
 }
+
+export function findGrant(grantId: number): Grant | null {
+  for (const run of getRuns()) {
+    const g = run.grants.find((x) => x.id === grantId)
+    if (g) return g
+  }
+  return null
+}
