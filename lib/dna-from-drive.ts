@@ -139,41 +139,54 @@ function clamp(n: unknown, lo: number, hi: number, fallback: number): number {
   return Math.min(hi, Math.max(lo, v))
 }
 
+// L'AI a volte scrive "null"/"N/A" come testo invece di lasciare vuoto: lo trattiamo come vuoto.
+const JUNK = new Set(['', 'null', 'undefined', 'n/a', 'na', '-', '—', 'none', 'nessuno', 'non disponibile', 'non trovato'])
+function cleanStr(s: unknown): string {
+  const v = typeof s === 'string' ? s.trim() : ''
+  return JUNK.has(v.toLowerCase()) ? '' : v
+}
+function cleanArr(a: unknown): string[] {
+  if (!Array.isArray(a)) return []
+  return [...new Set(a.map(cleanStr).filter(Boolean))]
+}
+
 // Normalizza l'output dell'AI: riempie i default così il resto del codice non vede mai `undefined`.
 function normalizeAi(raw: Partial<AiSynthesis> | null): AiSynthesis | null {
   if (!raw || !raw.corporate) return null
   const c = raw.corporate
   return {
     corporate: {
-      p_iva: c.p_iva ?? '',
-      rag_soc: c.rag_soc || COMPANY.name,
-      ateco: c.ateco ?? [],
+      p_iva: cleanStr(c.p_iva),
+      rag_soc: cleanStr(c.rag_soc) || COMPANY.name,
+      ateco: cleanArr(c.ateco),
       fin: {
         ult_bilancio_anno: c.fin?.ult_bilancio_anno ?? 0,
         fatturato: c.fin?.fatturato ?? 0,
         cap_sociale: c.fin?.cap_sociale ?? 0,
         utile_netto: c.fin?.utile_netto ?? 0,
       },
-      cert: c.cert ?? [],
-      comp: c.comp ?? [],
-      esperienze: (c.esperienze ?? []).map((e, i) => ({
-        id: e.id || `EXP${String(i + 1).padStart(2, '0')}`,
-        tag: e.tag || 'progetto',
-        valore: typeof e.valore === 'number' ? e.valore : 0,
-        desc: e.desc || '',
-      })),
+      cert: cleanArr(c.cert),
+      comp: cleanArr(c.comp),
+      esperienze: (c.esperienze ?? [])
+        .filter((e) => cleanStr(e?.desc))
+        .map((e, i) => ({
+          id: cleanStr(e.id) || `EXP${String(i + 1).padStart(2, '0')}`,
+          tag: cleanStr(e.tag) || 'progetto',
+          valore: typeof e.valore === 'number' ? e.valore : 0,
+          desc: cleanStr(e.desc),
+        })),
     },
-    headline: raw.headline || `${COMPANY.name}: DNA aziendale`,
+    headline: cleanStr(raw.headline) || `${COMPANY.name}: DNA aziendale`,
     nodes: (raw.nodes ?? [])
-      .filter((n) => n && n.label)
+      .filter((n) => n && cleanStr(n.label))
       .map((n) => ({
-        label: n.label,
+        label: cleanStr(n.label),
         group: GROUPS.includes(n.group) ? n.group : 'mercato',
         value: clamp(n.value, 10, 100, 60),
-        summary: n.summary || '',
+        summary: cleanStr(n.summary),
       })),
-    strengths: raw.strengths ?? [],
-    gaps: raw.gaps ?? [],
+    strengths: cleanArr(raw.strengths),
+    gaps: cleanArr(raw.gaps),
   }
 }
 

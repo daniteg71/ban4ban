@@ -118,4 +118,4 @@ cambia: al cambio cambia la versione e si ricalcola solo allora). La UI mostra "
 1. **Token zero finché possibile:** lo scraping (Step 3) e il filtro requisiti minimi (Step 4) NON usano AI. L'AI parte solo allo Step 5, sui pochi bandi sopravvissuti.
 2. **Scraping indipendente dal DNA:** prima si cerca tutto, poi dal DNA si filtra/score.
 3. **Chiavi contratte** nel DNA per risparmiare token nelle chiamate API.
-4. **Le chiavi non entrano mai nel repo** (solo env: `.env.local` / Vercel): `GOOGLE_SERVICE_ACCOUNT_JSON` + `DRIVE_BANDI_FOLDER_ID` (Drive) e `GEMINI_API_KEY` (AI Step 1; opzionale, `GEMINI_MODEL` default `gemini-2.0-flash`). Senza `GEMINI_API_KEY` il DNA usa l'euristica: l'app non si rompe.
+4. **Le chiavi non entrano mai nel repo** (solo env: `.env.local` / Vercel): `GOOGLE_SERVICE_ACCOUNT_JSON` + `DRIVE_BANDI_FOLDER_ID` (Drive) e `GEMINI_API_KEY` (AI Step 1; opzionale, `GEMINI_MODEL` default `gemini-2.5-flash`). Senza `GEMINI_API_KEY` il DNA usa l'euristica: l'app non si rompe.

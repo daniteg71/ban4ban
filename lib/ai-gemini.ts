@@ -6,7 +6,7 @@ import 'server-only'
 //
 // Env:
 //  - GEMINI_API_KEY   (obbligatoria per accendere l'AI; senza, il chiamante usa l'euristica)
-//  - GEMINI_MODEL     (opzionale, default gemini-2.0-flash)
+//  - GEMINI_MODEL     (opzionale, default gemini-2.5-flash — free tier verificata)
 //
 // La chiave resta SOLO lato server (env), MAI nel repo e MAI esposta al client.
 
@@ -16,7 +16,7 @@ export function isAiLive(): boolean {
 }
 
 function model(): string {
-  return process.env.GEMINI_MODEL || 'gemini-2.0-flash'
+  return process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 }
 
 // Schema di risposta in stile OpenAPI (sottoinsieme accettato da Gemini `responseSchema`).
