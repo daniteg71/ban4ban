@@ -12,27 +12,32 @@ export type RawResult = {
 const UA = 'Mozilla/5.0 (compatible; JesapBot/1.0; grant discovery)'
 
 /**
- * Scraping REALE dei principali incentivi nazionali per le imprese, direttamente dal
- * portale ufficiale del Ministero delle Imprese e del Made in Italy (MIMIT).
+ * Scraping REALE dei principali portali nazionali di incentivi alle imprese.
  * Eseguito a ogni ricerca (cache: 'no-store'), così i bandi sono sempre quelli pubblicati ora.
  *
- * Fonti:
- *  - RSS ufficiale incentivi (descrizioni + date)
- *  - pagina elenco incentivi (elenco completo)
+ * Fonti (tutte server-rendered, scrapabili senza headless browser):
+ *  - MIMIT (Ministero delle Imprese) — RSS + pagina elenco
+ *  - Invitalia (Agenzia nazionale per lo sviluppo) — pagina incentivi
  *
- * NB: per aggiungere altri portali, basta una nuova funzione che restituisce RawResult[]
- * e concatenare i risultati.
+ * NB: per aggiungere un portale, basta una nuova funzione che restituisce RawResult[]
+ * e aggiungerla all'array qui sotto. (Portali come incentivi.gov.it o i siti regionali sono
+ * app JavaScript: richiederebbero un headless browser; l'UE ha un'API a parte — vedi note.)
  */
 export async function scrapeGrants(_queries?: string[]): Promise<RawResult[]> {
-  const [rss, listing] = await Promise.all([scrapeMimitRss(), scrapeMimitListing()])
+  const groups = await Promise.all([
+    scrapeMimitRss(),
+    scrapeMimitListing(),
+    scrapeInvitalia(),
+  ])
 
-  // unione + dedup per link, RSS prioritario (ha le descrizioni)
+  // unione + dedup per link, preferendo chi ha una descrizione
   const byLink = new Map<string, RawResult>()
-  for (const r of [...rss, ...listing]) {
-    if (!byLink.has(r.link)) byLink.set(r.link, r)
-    else if (!byLink.get(r.link)!.snippet && r.snippet) byLink.set(r.link, r)
+  for (const r of groups.flat()) {
+    const existing = byLink.get(r.link)
+    if (!existing) byLink.set(r.link, r)
+    else if (!existing.snippet && r.snippet) byLink.set(r.link, r)
   }
-  return Array.from(byLink.values()).slice(0, 30)
+  return Array.from(byLink.values()).slice(0, 40)
 }
 
 async function scrapeMimitRss(): Promise<RawResult[]> {
@@ -99,6 +104,40 @@ async function scrapeMimitListing(): Promise<RawResult[]> {
       })
     })
     return out
+  } catch {
+    return []
+  }
+}
+
+async function scrapeInvitalia(): Promise<RawResult[]> {
+  try {
+    const res = await fetch('https://www.invitalia.it/cosa-facciamo/rafforziamo-le-imprese', {
+      headers: { 'User-Agent': UA },
+      cache: 'no-store',
+    })
+    if (!res.ok) return []
+    const html = await res.text()
+    const $ = cheerio.load(html)
+    // titolo "migliore" per ogni slug (scarta i link "LEGGI TUTTO su ...")
+    const bySlug = new Map<string, string>()
+    $('a[href^="/incentivi-e-strumenti/"]').each((_, el) => {
+      const a = $(el)
+      const href = a.attr('href') || ''
+      const slug = href.split('/incentivi-e-strumenti/')[1]
+      if (!slug) return
+      let title = a.text().replace(/\s+/g, ' ').trim()
+      title = title.replace(/^leggi tutto su\s*/i, '').trim()
+      if (title.length < 4) return
+      const prev = bySlug.get(slug)
+      if (!prev || title.length < prev.length) bySlug.set(slug, title)
+    })
+    return Array.from(bySlug.entries()).map(([slug, title]) => ({
+      title,
+      link: 'https://www.invitalia.it/incentivi-e-strumenti/' + slug,
+      source: 'Invitalia',
+      published: '',
+      snippet: 'Incentivo gestito da Invitalia (Agenzia nazionale per lo sviluppo). Dettagli e requisiti sulla pagina ufficiale.',
+    }))
   } catch {
     return []
   }

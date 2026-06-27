@@ -76,8 +76,8 @@ export function BandiList({
               Bandi per la tua azienda
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Scraping in tempo reale dai portali ufficiali (MIMIT). La compatibilità col DNA
-              verrà applicata quando arriverà il modulo dedicato.
+              Scraping in tempo reale dai portali ufficiali (MIMIT + Invitalia). La compatibilità
+              col DNA verrà applicata quando arriverà il modulo dedicato.
             </p>
           </div>
           <Button size="lg" onClick={runSearch} disabled={isPending}>

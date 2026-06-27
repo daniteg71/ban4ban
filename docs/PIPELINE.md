@@ -91,12 +91,23 @@ token nelle chiamate API. (Vedi anche `docs/dna_schema.json`.)
 |---|---|---|
 | 1 — Connessione Drive + DNA | 🟡 Drive **reale** OK; estrazione `Corporate DNA` da fare | `lib/drive.ts` (connessione reale via service account). Sintesi DNA: hook `rewriteDnaFromDrive` in `lib/company-config.ts` → **Gustavo** |
 | 2 — Modifica DNA (incrementale) | 🔴 Da fare | bottone + parsing incrementale → **Gustavo** |
-| 3 — Scraping bandi ufficiali | 🟢 **Fatto** (MIMIT reale, indipendente dal DNA) | `lib/scrape.ts`. Da estendere ad altri portali + normalizzazione campi (ATECO/scadenze/budget) |
+| 3 — Scraping bandi ufficiali | 🟢 **Fatto** (MIMIT + Invitalia reali, indipendente dal DNA) | `lib/scrape.ts`. EU/altri = nota sotto. Da fare: normalizzazione campi (ATECO/scadenze/budget) |
 | 4 — Filtro requisiti minimi | 🟡 Hook pass-through | `filterCompatible()` in `lib/company-config.ts` → **algoritmo del team** |
 | 5 — Scoring 1–10 | 🔴 Volutamente assente | in attesa del modulo di valutazione del team |
 | 6 — Strategia scaricabile | 🔴 Volutamente assente | in attesa del modulo strategia del team |
 
 **Legenda:** 🟢 fatto · 🟡 parziale/hook · 🔴 in attesa dei moduli del team.
+
+### Nota fonti bandi (Italia vs UE)
+- **Attive (scrapate a ogni ricerca):** MIMIT (RSS + elenco) e **Invitalia** — entrambe nazionali e
+  server-rendered, scrapabili con `fetch`+`cheerio` (zero token, zero browser headless).
+- **Non scrapabili con fetch semplice:** `incentivi.gov.it` e i portali **regionali** sono app
+  JavaScript (caricano i dati lato client) → servirebbe un headless browser (più pesante/costoso).
+- **Bandi europei (UE):** stanno su un portale diverso (**EU Funding & Tenders**), con struttura e
+  logica molto diverse dall'Italia (consorzi multi-paese, niente codice ATECO, budget/scadenze in
+  formato proprio). L'API ufficiale (SEDIA) va integrata a parte con la sua key; dal nostro ambiente
+  di test risponde 500, quindi va collegata e provata dall'ambiente di produzione. La normalizzazione
+  UE → JSON uniforme e il filtro di compatibilità UE sono un modulo dedicato (diverso da quello italiano).
 
 ### Regole d'oro (sempre valide)
 1. **Token zero finché possibile:** lo scraping (Step 3) e il filtro requisiti minimi (Step 4) NON usano AI. L'AI parte solo allo Step 5, sui pochi bandi sopravvissuti.
