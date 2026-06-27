@@ -12,13 +12,11 @@ export const COMPANY = {
 }
 
 // ----------------------------------------------------------------------------
-// HOOK 1 — riscrittura del DNA dal Drive (se ne occupa GUSTAVO con la sua API).
-// Per ora NON tocca il DNA: restituisce quello esistente. Quando arriverà il codice,
-// si implementa qui la lettura dei file (listDriveFiles) + sintesi.
+// HOOK 1 — riscrittura del DNA dal Drive: IMPLEMENTATO in `lib/dna-from-drive.ts`
+// (`getDnaFromDrive`). Legge il TESTO reale dei file e sintetizza CompanyDna + CorporateDna,
+// con ricostruzione incrementale (Step 2). Orchestrato in `app/actions/company.ts`.
+// `placeholderDnaFromFiles` qui sotto resta come fallback (solo nomi file).
 // ----------------------------------------------------------------------------
-export async function rewriteDnaFromDrive(currentDna: CompanyDna | null): Promise<CompanyDna | null> {
-  return currentDna
-}
 
 // ----------------------------------------------------------------------------
 // HOOK 2 — filtro REQUISITI MINIMI / compatibilità (Step 4).

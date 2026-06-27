@@ -89,8 +89,8 @@ token nelle chiamate API. (Vedi anche `docs/dna_schema.json`.)
 
 | Step | Stato | Dove nel codice |
 |---|---|---|
-| 1 — Connessione Drive + DNA | 🟡 Drive **reale** OK; estrazione `Corporate DNA` da fare | `lib/drive.ts` (connessione reale via service account). Sintesi DNA: hook `rewriteDnaFromDrive` in `lib/company-config.ts` → **Gustavo** |
-| 2 — Modifica DNA (incrementale) | 🔴 Da fare | bottone + parsing incrementale → **Gustavo** |
+| 1 — Connessione Drive + DNA | 🟢 **Fatto** (AI Gemini + fallback euristico) | `lib/drive.ts` (`readDriveTexts`: Sheets/Docs/.docx). Sintesi in `lib/dna-from-drive.ts` (`getDnaFromDrive` → `CompanyDna` galassia + `CorporateDna`). Con `GEMINI_API_KEY` la sintesi la fa **Gemini** (`lib/ai-gemini.ts`, free tier); senza chiave usa l'euristica regex. In entrambi i casi: niente dati inventati |
+| 2 — Modifica DNA (incrementale) | 🟢 **Fatto** (rilevamento automatico) | `getDnaFromDrive`: impronta `id+modifiedTime` (nessun download); se invariata riusa la cache, altrimenti ri-sintetizza. Manca solo il **bottone** UI di refresh manuale |
 | 3 — Scraping bandi ufficiali | 🟢 **Fatto** (MIMIT + Invitalia reali, indipendente dal DNA) | `lib/scrape.ts`. EU/altri = nota sotto. Da fare: normalizzazione campi (ATECO/scadenze/budget) |
 | 4 — Filtro requisiti minimi | 🟡 **Attivo** (regola placeholder) | `filterCompatible()` in `lib/company-config.ts`: split compatibili/non-ammissibili (booleano, 0 token). I non ammissibili compaiono in sezione dedicata col motivo. Regola placeholder per settore → la sostituisce l'**algoritmo del team** (requisiti ↔ DNA) |
 | 5 — Scoring 1–10 | 🔴 Volutamente assente | in attesa del modulo del team. Cache pronta: `withScoreCache()` |
@@ -118,4 +118,4 @@ cambia: al cambio cambia la versione e si ricalcola solo allora). La UI mostra "
 1. **Token zero finché possibile:** lo scraping (Step 3) e il filtro requisiti minimi (Step 4) NON usano AI. L'AI parte solo allo Step 5, sui pochi bandi sopravvissuti.
 2. **Scraping indipendente dal DNA:** prima si cerca tutto, poi dal DNA si filtra/score.
 3. **Chiavi contratte** nel DNA per risparmiare token nelle chiamate API.
-4. **La chiave del service account non entra mai nel repo** (solo env: `.env.local` / Vercel).
+4. **Le chiavi non entrano mai nel repo** (solo env: `.env.local` / Vercel): `GOOGLE_SERVICE_ACCOUNT_JSON` + `DRIVE_BANDI_FOLDER_ID` (Drive) e `GEMINI_API_KEY` (AI Step 1; opzionale, `GEMINI_MODEL` default `gemini-2.5-flash`). Senza `GEMINI_API_KEY` il DNA usa l'euristica: l'app non si rompe.

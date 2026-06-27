@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache'
 import type { Grant } from '@/lib/db/schema'
 import { scrapeGrants } from '@/lib/scrape'
 import { checkDriveConnection, type DriveStatus } from '@/lib/drive'
-import { COMPANY, filterCompatible, placeholderDnaFromFiles, rewriteDnaFromDrive } from '@/lib/company-config'
+import { getDnaFromDrive } from '@/lib/dna-from-drive'
+import { COMPANY, filterCompatible, placeholderDnaFromFiles } from '@/lib/company-config'
 import { addSearchRun, findGrant, getLatestRun, getRun, getRuns } from '@/lib/store'
 import { classifyNewVsKnown, dnaVersion, registerSeen } from '@/lib/token-cache'
 import { buildStrategy, type ExecutionStrategy } from '@/lib/strategy'
@@ -13,8 +14,13 @@ const PAGE_SIZE = 8
 
 export async function getCompanyInfo() {
   const drive: DriveStatus = await checkDriveConnection()
-  // DNA segnaposto dai file reali del Drive (il DNA completo lo riscriverà l'automazione di Gustavo).
-  const dna = drive.connected ? placeholderDnaFromFiles(drive.files) : null
+  // DNA REALE sintetizzato dal testo dei file (Step 1, con cache incrementale Step 2).
+  // Fallback al segnaposto (solo nomi file) se l'estrazione non produce nulla.
+  let dna = null
+  if (drive.connected) {
+    const built = await getDnaFromDrive()
+    dna = built?.companyDna ?? placeholderDnaFromFiles(drive.files)
+  }
   return { company: COMPANY, drive, dna }
 }
 
@@ -34,10 +40,8 @@ export async function searchGrants() {
     return (Number.isNaN(tb) ? -Infinity : tb) - (Number.isNaN(ta) ? -Infinity : ta)
   })
 
-  // 2) DNA dal Drive (per ora pass-through: lo riscriverà l'API di Gustavo)
-  const { drive } = await getCompanyInfo()
-  const dna = drive.connected ? placeholderDnaFromFiles(drive.files) : null
-  await rewriteDnaFromDrive(dna)
+  // 2) DNA REALE dal Drive (Step 1+2): sintetizzato dal testo dei file, ricostruito solo se cambiato.
+  const { dna } = await getCompanyInfo()
 
   // regionale vs nazionale (utile anche per i filtri futuri)
   const REGIONALI = ['Lazio Innova', 'Sviluppo Toscana', 'Sardegna Impresa']

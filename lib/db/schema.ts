@@ -69,8 +69,9 @@ export type GrantStrategy = {
   recommendedTimeline: string
 }
 
-// File del Drive aziendale.
-export type DriveFile = { id: string; name: string; mimeType: string }
+// File del Drive aziendale. `modifiedTime` (RFC-3339) serve a rilevare le modifiche
+// per la ricostruzione incrementale del DNA (Step 2), senza scaricare i file.
+export type DriveFile = { id: string; name: string; mimeType: string; modifiedTime?: string }
 
 // Bando scartato dal filtro requisiti minimi (NON valutato dall'AI -> 0 token), col motivo.
 export type ScartatoGrant = {

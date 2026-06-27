@@ -8,3 +8,11 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+# Credenziali service account / chiavi: MAI nel repo (vanno solo in .env.local / Vercel)
+*service-account*.json
+*service_account*.json
+*-credentials.json
+jesap-bandi-*.json
+gcp-*.json
+/secrets/
