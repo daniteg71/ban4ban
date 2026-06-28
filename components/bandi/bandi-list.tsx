@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
+  ArrowDownUp,
   ArrowRight,
   Ban,
   Clock,
@@ -35,6 +36,7 @@ export function BandiList({
   totalPages,
   total,
   query,
+  sort,
   unfilteredTotal,
   history,
   scartati,
@@ -45,6 +47,7 @@ export function BandiList({
   totalPages: number
   total: number
   query: string
+  sort: string
   unfilteredTotal: number
   history: HistoryItem[]
   scartati: ScartatoGrant[]
@@ -59,21 +62,24 @@ export function BandiList({
   // Tiene l'input allineato all'URL (es. quando si pulisce il filtro o si cambia run).
   useEffect(() => setQ(query), [query])
 
-  // Costruisce un URL conservando filtro (q) e run attivo, sovrascrivendo gli `extra`.
+  // Costruisce un URL conservando filtro (q), ordinamento (sort) e run attivo,
+  // sovrascrivendo gli `extra`. Il default 'recenti' si omette per tenere l'URL pulito.
   function buildUrl(extra: Record<string, string | number> = {}) {
     const p = new URLSearchParams()
     if (query) p.set('q', query)
+    if (sort && sort !== 'recenti') p.set('sort', sort)
     if (activeRunId) p.set('run', String(activeRunId))
     for (const [k, v] of Object.entries(extra)) p.set(k, String(v))
     const s = p.toString()
     return s ? `/?${s}` : '/'
   }
 
-  // Invia la ricerca: aggiorna ?q= (azzera la pagina) preservando il run.
+  // Invia la ricerca: aggiorna ?q= (azzera la pagina) preservando sort e run.
   function submitSearch(e: React.FormEvent) {
     e.preventDefault()
     const p = new URLSearchParams()
     if (q.trim()) p.set('q', q.trim())
+    if (sort && sort !== 'recenti') p.set('sort', sort)
     if (activeRunId) p.set('run', String(activeRunId))
     const s = p.toString()
     router.push(s ? `/?${s}` : '/')
@@ -82,15 +88,27 @@ export function BandiList({
   function clearSearch() {
     setQ('')
     const p = new URLSearchParams()
+    if (sort && sort !== 'recenti') p.set('sort', sort)
     if (activeRunId) p.set('run', String(activeRunId))
     const s = p.toString()
     router.push(s ? `/?${s}` : '/')
   }
 
-  // Link a un run dello storico, conservando il filtro testuale corrente.
+  // Cambia ordinamento: azzera la pagina, conserva filtro e run.
+  function changeSort(value: string) {
+    const p = new URLSearchParams()
+    if (query) p.set('q', query)
+    if (value && value !== 'recenti') p.set('sort', value)
+    if (activeRunId) p.set('run', String(activeRunId))
+    const s = p.toString()
+    router.push(s ? `/?${s}` : '/')
+  }
+
+  // Link a un run dello storico, conservando filtro e ordinamento correnti.
   function historyHref(id: number, latest: boolean) {
     const p = new URLSearchParams()
     if (query) p.set('q', query)
+    if (sort && sort !== 'recenti') p.set('sort', sort)
     if (!latest) p.set('run', String(id))
     const s = p.toString()
     return s ? `/?${s}` : '/'
@@ -139,29 +157,46 @@ export function BandiList({
           </Button>
         </div>
 
-        {/* Barra di ricerca: filtra per testo su titolo + descrizione (lato server) */}
+        {/* Barra di ricerca (testo su titolo + descrizione) + ordinamento — entrambi lato server */}
         {unfilteredTotal > 0 && (
-          <form onSubmit={submitSearch} className="glass flex items-center gap-2 rounded-2xl p-2">
-            <Search className="ml-2 size-4 shrink-0 text-muted-foreground" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Cerca tra i bandi (es. transizione, digitale, energia)…"
-              className="flex-1 bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <form onSubmit={submitSearch} className="glass flex flex-1 items-center gap-2 rounded-2xl p-2">
+              <Search className="ml-2 size-4 shrink-0 text-muted-foreground" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Cerca tra i bandi (es. transizione, digitale, energia)…"
+                className="flex-1 bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                >
+                  <X className="size-3.5" /> Azzera
+                </button>
+              )}
+              <Button type="submit" size="sm">
+                <Search className="size-4" /> Cerca
+              </Button>
+            </form>
+
+            {/* Ordinamento: i valori con dati reali ordinano subito; "voto" si accende con l'algoritmo */}
+            <label className="glass flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-muted-foreground">
+              <ArrowDownUp className="size-4 shrink-0 text-accent" />
+              <span className="hidden sm:inline">Ordina</span>
+              <select
+                value={sort}
+                onChange={(e) => changeSort(e.target.value)}
+                className="cursor-pointer bg-transparent text-sm font-medium text-foreground outline-none"
               >
-                <X className="size-3.5" /> Azzera
-              </button>
-            )}
-            <Button type="submit" size="sm">
-              <Search className="size-4" /> Cerca
-            </Button>
-          </form>
+                <option value="recenti">Più recenti</option>
+                <option value="voto">Voto più alto</option>
+                <option value="az">A–Z</option>
+              </select>
+            </label>
+          </div>
         )}
 
         {/* Storico ricerche */}
@@ -263,8 +298,10 @@ export function BandiList({
             <p className="text-xs text-muted-foreground">
               {query
                 ? `${total} di ${unfilteredTotal} bandi per «${query}»`
-                : `${total} bandi · in ordine di uscita (più recenti prima)`}{' '}
-              · pagina {page} di {totalPages}
+                : `${total} bandi`}
+              {' · '}
+              {sort === 'az' ? 'ordine alfabetico' : sort === 'voto' ? 'voto più alto prima' : 'più recenti prima'}
+              {' · '}pagina {page} di {totalPages}
             </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {grants.map((g) => (

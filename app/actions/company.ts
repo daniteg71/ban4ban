@@ -96,13 +96,15 @@ export async function searchGrants() {
 export async function getGrantsPage(
   page = 1,
   runId?: number,
-  q?: string
+  q?: string,
+  sort?: string
 ): Promise<{
   grants: Grant[]
   page: number
   totalPages: number
   total: number
   query: string
+  sort: string
   unfilteredTotal: number
 }> {
   const run = runId ? getRun(runId) : getLatestRun()
@@ -110,17 +112,28 @@ export async function getGrantsPage(
   const query = (q ?? '').trim()
   // Match AND su tutte le parole: "transizione energia" trova chi contiene entrambe.
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-  const all = words.length
+  const filtered = words.length
     ? allRaw.filter((g) => {
         const hay = `${g.title} ${g.description ?? ''}`.toLowerCase()
         return words.every((w) => hay.includes(w))
       })
     : allRaw
+
+  // Ordinamento DOPO il filtro e PRIMA della paginazione (ordina tutti i bandi del run).
+  // Mai mutare l'array dello store in-memory: copiare con [...].
+  const sortKey = sort ?? 'recenti'
+  const all =
+    sortKey === 'voto'
+      ? [...filtered].sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+      : sortKey === 'az'
+        ? [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'it'))
+        : filtered // 'recenti' = ordine di uscita (già desc per data)
+
   const total = all.length
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const p = Math.min(Math.max(1, page), totalPages)
   const grants = all.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE)
-  return { grants, page: p, totalPages, total, query, unfilteredTotal: allRaw.length }
+  return { grants, page: p, totalPages, total, query, sort: sortKey, unfilteredTotal: allRaw.length }
 }
 
 // Output strategico (Step 6) per un bando. Costruito dai dati reali; i campi AI sono segnaposto
