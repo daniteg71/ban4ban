@@ -15,16 +15,16 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; run?: string }>
+  searchParams: Promise<{ page?: string; run?: string; q?: string }>
 }) {
-  const { page, run } = await searchParams
+  const { page, run, q } = await searchParams
   const pageNum = page ? Math.max(1, Number.parseInt(page, 10) || 1) : 1
   const runId = run ? Number.parseInt(run, 10) : undefined
   const validRun = Number.isFinite(runId) ? runId : undefined
 
   const [{ company, drive }, paged, history, scartati] = await Promise.all([
     getCompanyInfo(),
-    getGrantsPage(pageNum, validRun),
+    getGrantsPage(pageNum, validRun, q),
     getSearchHistory(),
     getScartati(validRun),
   ])
@@ -96,6 +96,8 @@ export default async function HomePage({
           page={paged.page}
           totalPages={paged.totalPages}
           total={paged.total}
+          query={paged.query}
+          unfilteredTotal={paged.unfilteredTotal}
           history={history}
           scartati={scartati}
           activeRunId={validRun}

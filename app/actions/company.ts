@@ -91,17 +91,36 @@ export async function searchGrants() {
 }
 
 // Bandi paginati (8 per pagina) della ricerca corrente o di una dello storico.
+// `q` filtra (testo libero su titolo + descrizione) PRIMA di paginare, così la
+// ricerca lavora su tutti i bandi del run e non solo sulla pagina visibile.
 export async function getGrantsPage(
   page = 1,
-  runId?: number
-): Promise<{ grants: Grant[]; page: number; totalPages: number; total: number }> {
+  runId?: number,
+  q?: string
+): Promise<{
+  grants: Grant[]
+  page: number
+  totalPages: number
+  total: number
+  query: string
+  unfilteredTotal: number
+}> {
   const run = runId ? getRun(runId) : getLatestRun()
-  const all = run?.grants ?? []
+  const allRaw = run?.grants ?? []
+  const query = (q ?? '').trim()
+  // Match AND su tutte le parole: "transizione energia" trova chi contiene entrambe.
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const all = words.length
+    ? allRaw.filter((g) => {
+        const hay = `${g.title} ${g.description ?? ''}`.toLowerCase()
+        return words.every((w) => hay.includes(w))
+      })
+    : allRaw
   const total = all.length
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const p = Math.min(Math.max(1, page), totalPages)
   const grants = all.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE)
-  return { grants, page: p, totalPages, total }
+  return { grants, page: p, totalPages, total, query, unfilteredTotal: allRaw.length }
 }
 
 // Output strategico (Step 6) per un bando. Costruito dai dati reali; i campi AI sono segnaposto

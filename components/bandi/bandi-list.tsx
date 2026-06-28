@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -14,6 +14,7 @@ import {
   MapPin,
   Radar,
   Search,
+  X,
 } from 'lucide-react'
 import { searchGrants } from '@/app/actions/company'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +34,8 @@ export function BandiList({
   page,
   totalPages,
   total,
+  query,
+  unfilteredTotal,
   history,
   scartati,
   activeRunId,
@@ -41,6 +44,8 @@ export function BandiList({
   page: number
   totalPages: number
   total: number
+  query: string
+  unfilteredTotal: number
   history: HistoryItem[]
   scartati: ScartatoGrant[]
   activeRunId?: number
@@ -50,6 +55,46 @@ export function BandiList({
   const [step, setStep] = useState(0)
   const [info, setInfo] = useState<string | null>(null)
   const [showScartati, setShowScartati] = useState(false)
+  const [q, setQ] = useState(query)
+  // Tiene l'input allineato all'URL (es. quando si pulisce il filtro o si cambia run).
+  useEffect(() => setQ(query), [query])
+
+  // Costruisce un URL conservando filtro (q) e run attivo, sovrascrivendo gli `extra`.
+  function buildUrl(extra: Record<string, string | number> = {}) {
+    const p = new URLSearchParams()
+    if (query) p.set('q', query)
+    if (activeRunId) p.set('run', String(activeRunId))
+    for (const [k, v] of Object.entries(extra)) p.set(k, String(v))
+    const s = p.toString()
+    return s ? `/?${s}` : '/'
+  }
+
+  // Invia la ricerca: aggiorna ?q= (azzera la pagina) preservando il run.
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault()
+    const p = new URLSearchParams()
+    if (q.trim()) p.set('q', q.trim())
+    if (activeRunId) p.set('run', String(activeRunId))
+    const s = p.toString()
+    router.push(s ? `/?${s}` : '/')
+  }
+
+  function clearSearch() {
+    setQ('')
+    const p = new URLSearchParams()
+    if (activeRunId) p.set('run', String(activeRunId))
+    const s = p.toString()
+    router.push(s ? `/?${s}` : '/')
+  }
+
+  // Link a un run dello storico, conservando il filtro testuale corrente.
+  function historyHref(id: number, latest: boolean) {
+    const p = new URLSearchParams()
+    if (query) p.set('q', query)
+    if (!latest) p.set('run', String(id))
+    const s = p.toString()
+    return s ? `/?${s}` : '/'
+  }
 
   function runSearch() {
     setInfo(null)
@@ -71,7 +116,6 @@ export function BandiList({
     })
   }
 
-  const runParam = activeRunId ? `&run=${activeRunId}` : ''
   const activeRun = activeRunId ? history.find((h) => h.id === activeRunId) : history[0]
 
   return (
@@ -95,6 +139,31 @@ export function BandiList({
           </Button>
         </div>
 
+        {/* Barra di ricerca: filtra per testo su titolo + descrizione (lato server) */}
+        {unfilteredTotal > 0 && (
+          <form onSubmit={submitSearch} className="glass flex items-center gap-2 rounded-2xl p-2">
+            <Search className="ml-2 size-4 shrink-0 text-muted-foreground" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Cerca tra i bandi (es. transizione, digitale, energia)…"
+              className="flex-1 bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+              >
+                <X className="size-3.5" /> Azzera
+              </button>
+            )}
+            <Button type="submit" size="sm">
+              <Search className="size-4" /> Cerca
+            </Button>
+          </form>
+        )}
+
         {/* Storico ricerche */}
         {history.length > 0 && (
           <div className="glass rounded-2xl p-4">
@@ -107,7 +176,7 @@ export function BandiList({
                 return (
                   <Link
                     key={h.id}
-                    href={i === 0 ? '/' : `/?run=${h.id}`}
+                    href={historyHref(h.id, i === 0)}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs transition-colors ${
                       isActive
                         ? 'border-primary/50 bg-primary/20 text-foreground'
@@ -158,8 +227,8 @@ export function BandiList({
 
         {info && !isPending && <p className="text-sm text-muted-foreground">{info}</p>}
 
-        {/* Empty */}
-        {!isPending && total === 0 && (
+        {/* Empty: nessun bando del tutto */}
+        {!isPending && total === 0 && unfilteredTotal === 0 && (
           <div className="glass flex flex-col items-center justify-center rounded-3xl px-6 py-16 text-center">
             <div className="rounded-2xl border border-border bg-primary/10 p-4">
               <Radar className="size-8 text-accent" />
@@ -171,11 +240,31 @@ export function BandiList({
           </div>
         )}
 
+        {/* Empty: ci sono bandi ma il filtro non trova nulla */}
+        {!isPending && total === 0 && unfilteredTotal > 0 && (
+          <div className="glass flex flex-col items-center justify-center rounded-3xl px-6 py-12 text-center">
+            <div className="rounded-2xl border border-border bg-primary/10 p-4">
+              <Search className="size-7 text-accent" />
+            </div>
+            <h2 className="mt-4 text-base font-semibold">Nessun bando per «{query}»</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Prova con un altro termine.{' '}
+              <button onClick={clearSearch} className="text-accent hover:underline">
+                Azzera il filtro
+              </button>{' '}
+              per rivedere tutti i {unfilteredTotal} bandi.
+            </p>
+          </div>
+        )}
+
         {/* Risultati (8 per pagina) */}
         {!isPending && grants.length > 0 && (
           <>
             <p className="text-xs text-muted-foreground">
-              {total} bandi · in ordine di uscita (più recenti prima) · pagina {page} di {totalPages}
+              {query
+                ? `${total} di ${unfilteredTotal} bandi per «${query}»`
+                : `${total} bandi · in ordine di uscita (più recenti prima)`}{' '}
+              · pagina {page} di {totalPages}
             </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {grants.map((g) => (
@@ -215,7 +304,7 @@ export function BandiList({
             {totalPages > 1 && (
               <div className="mt-2 flex items-center justify-center gap-2">
                 <Link
-                  href={`/?page=${page - 1}${runParam}`}
+                  href={buildUrl({ page: page - 1 })}
                   aria-disabled={page <= 1}
                   className={`rounded-lg border border-border px-3 py-1.5 text-sm ${
                     page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-primary/10'
@@ -227,7 +316,7 @@ export function BandiList({
                   {page} / {totalPages}
                 </span>
                 <Link
-                  href={`/?page=${page + 1}${runParam}`}
+                  href={buildUrl({ page: page + 1 })}
                   aria-disabled={page >= totalPages}
                   className={`rounded-lg border border-border px-3 py-1.5 text-sm ${
                     page >= totalPages ? 'pointer-events-none opacity-40' : 'hover:bg-primary/10'
