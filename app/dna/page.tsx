@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { TriangleAlert } from 'lucide-react'
-import { AppNav } from '@/components/app-nav'
+import { AppShell } from '@/components/app-shell'
 import { DnaExplorer } from '@/components/dna/dna-explorer'
 import { Button } from '@/components/ui/button'
 import { getCompanyInfo } from '@/app/actions/company'
@@ -12,10 +12,9 @@ export default async function DnaPage() {
 
   if (!drive.connected || !dna) {
     return (
-      <main className="aurora-bg min-h-screen">
-        <AppNav companyName={company.name} />
-        <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-4 py-24 text-center">
-          <div className="rounded-2xl bg-warn/10 p-4">
+      <AppShell companyName={company.name}>
+        <div className="mx-auto flex max-w-xl flex-col items-center gap-4 py-24 text-center">
+          <div className="rounded-xl bg-warn/10 p-4">
             <TriangleAlert className="size-8 text-warn" />
           </div>
           <h1 className="text-xl font-semibold">DNA non disponibile</h1>
@@ -24,14 +23,13 @@ export default async function DnaPage() {
             <Button variant="outline" className="bg-transparent">Torna alla home</Button>
           </Link>
         </div>
-      </main>
+      </AppShell>
     )
   }
 
   return (
-    <main className="aurora-bg min-h-screen">
-      <AppNav companyName={company.name} />
+    <AppShell companyName={company.name} noPadding>
       <DnaExplorer dna={dna} companyName={company.name} />
-    </main>
+    </AppShell>
   )
 }

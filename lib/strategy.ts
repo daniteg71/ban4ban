@@ -56,7 +56,8 @@ export function buildStrategy(dna: CompanyDna | null, grant: Grant, nowIso: stri
       scadenza: grant.deadline ?? undefined,
       importo: grant.amount ?? undefined,
     },
-    score: null,
+    // voto 1-10 già calcolato in fase di ricerca (algoritmo di valutazione)
+    score: grant.matchScore && grant.matchScore > 0 ? grant.matchScore : null,
     probabilita: null,
     // struttura della tabella pronta; gli esiti reali li mette l'algoritmo del team
     matching: [

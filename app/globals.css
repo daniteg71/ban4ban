@@ -59,32 +59,33 @@
 
 :root {
   color-scheme: dark;
-  --radius: 1rem;
+  --radius: 0.75rem;
 
-  --background: #0b0814;
-  --foreground: #ece8f2;
+  /* Tema scuro sobrio: grigi neutri, accento viola usato con parsimonia */
+  --background: #0b0e14;
+  --foreground: #e6e9ef;
 
-  --card: #15101f;
-  --card-foreground: #ece8f2;
-  --popover: #161020;
-  --popover-foreground: #ece8f2;
+  --card: #111620;
+  --card-foreground: #e6e9ef;
+  --popover: #141a24;
+  --popover-foreground: #e6e9ef;
 
-  --primary: #8a3b86;
+  --primary: #b569b0;
   --primary-foreground: #ffffff;
 
-  --secondary: #1f1830;
-  --secondary-foreground: #ece8f2;
+  --secondary: #161c28;
+  --secondary-foreground: #e6e9ef;
 
-  --muted: #1a1426;
-  --muted-foreground: #a99fb8;
+  --muted: #141a24;
+  --muted-foreground: #8b94a7;
 
-  --accent: #b569b0;
-  --accent-foreground: #1a0f1a;
+  --accent: #c07abb;
+  --accent-foreground: #ffffff;
 
   --destructive: #ef4444;
 
-  --border: rgba(181, 105, 176, 0.16);
-  --input: rgba(181, 105, 176, 0.2);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
   --ring: #8a3b86;
 
   --brand: #8a3b86;
@@ -100,13 +101,13 @@
   --chart-4: #22c55e;
   --chart-5: #f59e0b;
 
-  --sidebar: #100b1a;
-  --sidebar-foreground: #ece8f2;
-  --sidebar-primary: #8a3b86;
+  --sidebar: #0d1118;
+  --sidebar-foreground: #e6e9ef;
+  --sidebar-primary: #b569b0;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1f1830;
-  --sidebar-accent-foreground: #ece8f2;
-  --sidebar-border: rgba(181, 105, 176, 0.16);
+  --sidebar-accent: #161c28;
+  --sidebar-accent-foreground: #e6e9ef;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #8a3b86;
 }
 
@@ -123,64 +124,24 @@
 }
 
 @layer components {
-  /* Glassmorphism surface: frosted glass with soft violet border */
+  /* Superficie piatta sobria: card neutra, bordo sottile, ombra discreta */
   .glass {
-    background: linear-gradient(
-      150deg,
-      rgba(138, 59, 134, 0.1),
-      rgba(21, 16, 31, 0.55)
-    );
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
-    border: 1px solid rgba(181, 105, 176, 0.18);
-    box-shadow: 0 8px 40px -12px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
 
   .glass-strong {
-    background: linear-gradient(
-      150deg,
-      rgba(138, 59, 134, 0.16),
-      rgba(17, 12, 26, 0.8)
-    );
-    backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
-    border: 1px solid rgba(181, 105, 176, 0.22);
-    box-shadow: 0 12px 60px -16px rgba(0, 0, 0, 0.7),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+    background-color: var(--popover);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 }
 
-/* Animated violet gradient background, Obsidian/Claude inspired */
+/* Sfondo applicazione: tinta unita neutra, niente aurora/animazioni */
 .aurora-bg {
   position: relative;
-  background-color: #0b0814;
-  overflow: hidden;
-}
-.aurora-bg::before {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  background:
-    radial-gradient(40% 40% at 20% 25%, rgba(138, 59, 134, 0.32), transparent 70%),
-    radial-gradient(35% 35% at 80% 20%, rgba(181, 105, 176, 0.26), transparent 70%),
-    radial-gradient(45% 45% at 70% 85%, rgba(111, 47, 107, 0.3), transparent 70%);
-  filter: blur(40px);
-  animation: aurora-drift 22s ease-in-out infinite alternate;
-  z-index: 0;
-  pointer-events: none;
-}
-
-@keyframes aurora-drift {
-  0% {
-    transform: translate3d(-4%, -2%, 0) rotate(0deg) scale(1);
-  }
-  50% {
-    transform: translate3d(4%, 3%, 0) rotate(6deg) scale(1.08);
-  }
-  100% {
-    transform: translate3d(2%, -4%, 0) rotate(-4deg) scale(1.04);
-  }
+  background-color: var(--background);
 }
 
 @keyframes pulse-ring {
@@ -228,9 +189,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(181, 105, 176, 0.28);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(181, 105, 176, 0.45);
+  background: rgba(255, 255, 255, 0.22);
 }

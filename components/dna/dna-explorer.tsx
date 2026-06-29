@@ -38,7 +38,7 @@ export function DnaExplorer({
   }, [dna.nodes])
 
   return (
-    <div className="relative h-[calc(100vh-5rem)] w-full">
+    <div className="relative h-[calc(100dvh-3.5rem)] w-full md:h-dvh">
       {/* Mappa 2D statica */}
       <div className="absolute inset-0 p-4">
         <DnaMap2D dna={dna} selectedId={selectedId} onSelect={setSelectedId} />

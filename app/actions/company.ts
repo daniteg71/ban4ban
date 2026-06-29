@@ -7,8 +7,9 @@ import { checkDriveConnection, type DriveStatus } from '@/lib/drive'
 import { getDnaFromDrive } from '@/lib/dna-from-drive'
 import { COMPANY, filterCompatible, placeholderDnaFromFiles } from '@/lib/company-config'
 import { addSearchRun, findGrant, getLatestRun, getRun, getRuns } from '@/lib/store'
-import { classifyNewVsKnown, dnaVersion, registerSeen } from '@/lib/token-cache'
+import { classifyNewVsKnown, registerSeen } from '@/lib/token-cache'
 import { buildStrategy, type ExecutionStrategy } from '@/lib/strategy'
+import { refOf, scoreBandi } from '@/lib/scoring'
 
 const PAGE_SIZE = 8
 
@@ -40,8 +41,18 @@ export async function searchGrants() {
     return (Number.isNaN(tb) ? -Infinity : tb) - (Number.isNaN(ta) ? -Infinity : ta)
   })
 
-  // 2) DNA REALE dal Drive (Step 1+2): sintetizzato dal testo dei file, ricostruito solo se cambiato.
-  const { dna } = await getCompanyInfo()
+  // 2) DNA dal Drive (cache incrementale). Robusto: se l'estrazione fallisce/è lenta, si prosegue
+  //    comunque (dna=null) e lo scoring usa il fallback deterministico -> la ricerca non si rompe mai.
+  let companyDna = null
+  let corporateDna = null
+  try {
+    const built = await getDnaFromDrive()
+    companyDna = built?.companyDna ?? null
+    corporateDna = built?.corporateDna ?? null
+  } catch {
+    // ignora: si procede senza DNA (fallback)
+  }
+  const dna = companyDna
 
   // regionale vs nazionale (utile anche per i filtri futuri)
   const REGIONALI = ['Lazio Innova', 'Sviluppo Toscana', 'Sardegna Impresa']
@@ -71,9 +82,28 @@ export async function searchGrants() {
     motivo: s.motivo,
   }))
 
-  // 3b) ANTI-SPRECO TOKEN: nuovi vs già noti, calcolato SOLO sui compatibili (gli unici che andrebbero all'AI).
-  // Lo scoring del team userà withScoreCache(hash, dnaVersion(dna), ...) per spendere solo sui nuovi.
-  void dnaVersion(dna)
+  // 3c) VALUTAZIONE 1-10 su TUTTI i compatibili (batch Gemini + cache + fallback). Mai blocca la ricerca.
+  try {
+    const scores = await scoreBandi(
+      corporateDna,
+      compatibili.map((g) => ({
+        ref: refOf({ source: g.sourceName, link: g.sourceUrl }),
+        title: g.title,
+        source: g.sourceName ?? '',
+        text: g.description ?? '',
+      }))
+    )
+    for (const g of compatibili) {
+      const s = scores[refOf({ source: g.sourceName, link: g.sourceUrl })]
+      g.matchScore = s ? s.score : 0 // voto 1-10
+    }
+  } catch {
+    // se lo scoring fallisce, i bandi restano senza voto (matchScore 0) ma la ricerca funziona
+  }
+  // sorting per affinità: voto più alto in cima
+  compatibili.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+
+  // 3b) ANTI-SPRECO TOKEN: nuovi vs già noti (solo i nuovi vengono valutati dall'AI; i noti riusano la cache).
   const { nuovi, giaNoti } = classifyNewVsKnown(compatibili)
   registerSeen(compatibili, new Date().toISOString())
 

@@ -78,12 +78,12 @@ export function BandiList({
     <div className="mt-6">
       <div className="flex flex-col gap-6">
         {/* Header / search */}
-        <div className="glass-strong flex flex-col items-start justify-between gap-4 rounded-3xl p-6 sm:flex-row sm:items-center">
+        <div className="glass flex flex-col items-start justify-between gap-4 rounded-xl p-6 sm:flex-row sm:items-center">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-              <Radar className="size-6 text-accent" />
-              Bandi per la tua azienda
-            </h1>
+            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <Radar className="size-5 text-accent" />
+              Ricerca bandi
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Scraping in tempo reale dai portali ufficiali (MIMIT + Invitalia). La compatibilità
               col DNA verrà applicata quando arriverà il modulo dedicato.
@@ -160,8 +160,8 @@ export function BandiList({
 
         {/* Empty */}
         {!isPending && total === 0 && (
-          <div className="glass flex flex-col items-center justify-center rounded-3xl px-6 py-16 text-center">
-            <div className="rounded-2xl border border-border bg-primary/10 p-4">
+          <div className="glass flex flex-col items-center justify-center rounded-xl px-6 py-16 text-center">
+            <div className="rounded-xl border border-border bg-secondary p-4">
               <Radar className="size-8 text-accent" />
             </div>
             <h2 className="mt-4 text-lg font-semibold">Avvia la prima ricerca</h2>
@@ -175,19 +175,30 @@ export function BandiList({
         {!isPending && grants.length > 0 && (
           <>
             <p className="text-xs text-muted-foreground">
-              {total} bandi · in ordine di uscita (più recenti prima) · pagina {page} di {totalPages}
+              {total} bandi · ordinati per affinità col profilo (voto più alto in cima) · pagina {page} di {totalPages}
             </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {grants.map((g) => (
+              {grants.map((g) => {
+                const voto = g.matchScore ?? 0
+                const votoColor = voto >= 7.5 ? 'text-ok' : voto >= 5 ? 'text-warn' : 'text-muted-foreground'
+                return (
                 <div key={g.id} className="glass flex flex-col rounded-2xl p-5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {g.region && (
-                      <Badge variant="secondary" className="gap-1">
-                        <MapPin className="size-3" />
-                        {g.region}
-                      </Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {g.region && (
+                        <Badge variant="secondary" className="gap-1">
+                          <MapPin className="size-3" />
+                          {g.region}
+                        </Badge>
+                      )}
+                      {g.sourceName && <Badge variant="secondary">{g.sourceName}</Badge>}
+                    </div>
+                    {voto > 0 && (
+                      <div className="flex shrink-0 items-baseline gap-0.5" title="Affinità col profilo aziendale (1-10)">
+                        <span className={`text-xl font-bold ${votoColor}`}>{voto.toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground">/10</span>
+                      </div>
                     )}
-                    {g.sourceName && <Badge variant="secondary">{g.sourceName}</Badge>}
                   </div>
                   <Link href={`/bandi/${g.id}`} className="group">
                     <h3 className="mt-2 text-pretty text-base font-semibold leading-snug group-hover:text-accent">
@@ -208,7 +219,8 @@ export function BandiList({
                     )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Paginazione */}

@@ -27,7 +27,7 @@ export function StrategyView({ s }: { s: ExecutionStrategy }) {
       </div>
 
       {/* FOGLIO strategia */}
-      <div className="strategy-sheet glass-strong rounded-3xl p-8">
+      <div className="strategy-sheet glass rounded-xl p-8">
         <header className="border-b border-border pb-4">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
             <Printer className="size-3.5" /> Strategia di partecipazione
