@@ -196,11 +196,42 @@ export async function getGrantsPage(
   return { grants, page: p, totalPages, total, query, sort: sortKey, unfilteredTotal: allRaw.length }
 }
 
+// Ricostruisce un Grant dallo "snapshot" passato nell'URL dal link "Strategia".
+// Così la pagina strategia NON dipende dallo store in-memory (che sul serverless si azzera
+// tra un'istanza e l'altra → 404). Lo snapshot ha le stesse chiavi di Grant: parse diretto.
+function grantFromSnapshotRaw(raw?: string): Grant | null {
+  if (!raw) return null
+  try {
+    const s = JSON.parse(raw) as Partial<Grant>
+    if (!s || typeof s.title !== 'string' || !s.title) return null
+    return {
+      id: 0,
+      companyId: 'url',
+      title: s.title,
+      sourceUrl: s.sourceUrl ?? null,
+      sourceName: s.sourceName ?? null,
+      description: s.description ?? null,
+      deadline: s.deadline ?? null,
+      amount: s.amount ?? null,
+      category: null,
+      region: s.region ?? null,
+      matchScore: typeof s.matchScore === 'number' ? s.matchScore : null,
+      scoreReason: s.scoreReason ?? null,
+      strategy: null,
+      createdAt: new Date(),
+    }
+  } catch {
+    return null
+  }
+}
+
 // Output strategico (Step 6) per un bando: analisi dettagliata (6 dimensioni + checklist
 // operativa) al click. Se l'AI è spenta/fallisce, lo scheletro resta (mai null per questo).
-export async function getStrategy(grantId: number): Promise<ExecutionStrategy | null> {
+// `snapshotRaw`: dati del bando nell'URL (robusto su serverless). Lo store resta come fallback
+// (link vecchi / istanza calda in locale).
+export async function getStrategy(grantId: number, snapshotRaw?: string): Promise<ExecutionStrategy | null> {
   const selected = await resolveSelected()
-  const grant = findGrant(selected?.id ?? 'none', grantId)
+  const grant = grantFromSnapshotRaw(snapshotRaw) ?? findGrant(selected?.id ?? 'none', grantId)
   if (!grant) return null
 
   const built = await getDnaFromDrive(selected?.id, selected?.name)

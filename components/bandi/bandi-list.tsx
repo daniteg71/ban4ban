@@ -38,6 +38,24 @@ const SORT_OPTIONS = [
   { value: 'az', label: 'A–Z' },
 ] as const
 
+// Link alla pagina strategia che porta con sé uno "snapshot" del bando nell'URL (?b=).
+// Così la pagina si ricostruisce dai dati del Drive + AI senza dipendere dallo store
+// in-memory (che sul serverless si azzera tra istanze → 404). Chiavi = campi di Grant.
+function strategyHref(g: Grant): string {
+  const snap = {
+    title: g.title,
+    sourceName: g.sourceName,
+    sourceUrl: g.sourceUrl,
+    description: g.description ? g.description.slice(0, 500) : null,
+    region: g.region,
+    amount: g.amount,
+    deadline: g.deadline,
+    matchScore: g.matchScore,
+    scoreReason: g.scoreReason,
+  }
+  return `/bandi/${g.id}?b=${encodeURIComponent(JSON.stringify(snap))}`
+}
+
 export function BandiList({
   grants,
   page,
@@ -358,6 +376,7 @@ export function BandiList({
               {grants.map((g) => {
                 const voto = g.matchScore ?? 0
                 const votoColor = voto >= 7.5 ? 'text-ok' : voto >= 5 ? 'text-warn' : 'text-muted-foreground'
+                const href = strategyHref(g)
                 return (
                 <div key={g.id} className="glass flex flex-col rounded-2xl p-5">
                   <div className="flex items-start justify-between gap-2">
@@ -377,7 +396,7 @@ export function BandiList({
                       </div>
                     )}
                   </div>
-                  <Link href={`/bandi/${g.id}`} className="group">
+                  <Link href={href} className="group">
                     <h3 className="mt-2 text-pretty text-base font-semibold leading-snug group-hover:text-accent">
                       {g.title}
                     </h3>
@@ -386,7 +405,7 @@ export function BandiList({
                     <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground">{g.description}</p>
                   )}
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
-                    <Link href={`/bandi/${g.id}`} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+                    <Link href={href} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
                       Strategia <ArrowRight className="size-3.5" />
                     </Link>
                     {g.sourceUrl && (
