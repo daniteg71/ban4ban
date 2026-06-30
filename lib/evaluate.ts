@@ -170,6 +170,7 @@ function companyForPrompt(dna: CorporateDna, extra?: { strengths?: string[]; gap
   return {
     name: dna.rag_soc,
     vat_number: dna.p_iva || undefined,
+    location: dna.regione || undefined,
     ateco_primary: dna.ateco?.[0],
     ateco_secondary: dna.ateco?.slice(1),
     sectors: [...(dna.settori ?? []), ...(dna.ateco ?? [])],

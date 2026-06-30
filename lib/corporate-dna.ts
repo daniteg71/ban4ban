@@ -13,6 +13,7 @@ export type CorporateExperience = {
 export type CorporateDna = {
   p_iva: string
   rag_soc: string
+  regione: string // regione/sede dell'azienda (es. "Lazio"); "" se non determinata
   ateco: string[]
   fin: {
     ult_bilancio_anno: number

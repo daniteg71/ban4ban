@@ -73,38 +73,19 @@ const SOURCE_REGION: Record<string, string> = {
   'Sardegna Impresa': 'Sardegna',
 }
 
-// Deduce la regione dell'azienda dal testo dei suoi documenti (best-effort, prudente:
-// ritorna null se incerto → nessun filtro geografico). Nome regione o città capoluogo.
-const REGION_HINTS: { region: string; rx: RegExp }[] = [
-  { region: 'Lazio', rx: /\blazio\b|\broma\b|latina|frosinone|viterbo|\brieti\b/i },
-  { region: 'Toscana', rx: /toscana|firenze|\bprato\b|\bpisa\b|livorno|arezzo|\bsiena\b|\blucca\b|grosseto/i },
-  { region: 'Sardegna', rx: /sardegna|cagliari|sassari|\bnuoro\b|oristano|\bolbia\b/i },
-  { region: 'Lombardia', rx: /lombardia|milano|bergamo|brescia|\bmonza\b|\bcomo\b|varese|\bpavia\b/i },
-  { region: 'Veneto', rx: /\bveneto\b|venezia|verona|padova|vicenza|treviso|rovigo|belluno/i },
-  { region: 'Piemonte', rx: /piemonte|torino|\bcuneo\b|alessandria|\bnovara\b|\basti\b/i },
-  { region: 'Emilia-Romagna', rx: /emilia|bologna|\bmodena\b|parma|reggio emilia|ferrara|ravenna|rimini|forl/i },
-  { region: 'Campania', rx: /campania|napoli|salerno|caserta|avellino|benevento/i },
-  { region: 'Puglia', rx: /\bpuglia\b|\bbari\b|taranto|\blecce\b|foggia|brindisi|andria/i },
-  { region: 'Sicilia', rx: /sicilia|palermo|catania|messina|siracusa|trapani|ragusa|agrigento/i },
-]
-
-export function detectCompanyRegion(text: string): string | null {
-  for (const h of REGION_HINTS) if (h.rx.test(text)) return h.region
-  return null
-}
-
 export function filterCompatible<T extends Grant>(
   dna: CorporateDna | null,
-  grants: T[],
-  companyRegion?: string | null
+  grants: T[]
 ): { compatibili: T[]; scartati: { grant: T; motivo: string }[] } {
   const compatibili: T[] = []
   const scartati: { grant: T; motivo: string }[] = []
 
-  // Profilo testuale dell'azienda (competenze + ateco + ragione sociale) per l'affinità di settore.
+  // Profilo testuale dell'azienda (competenze + settori + ateco + ragione sociale) per l'affinità di settore.
   const profile = dna
     ? [...(dna.comp ?? []), ...(dna.settori ?? []), ...(dna.ateco ?? []), dna.rag_soc ?? ''].join(' ').toLowerCase()
     : ''
+  // Regione dell'azienda dal DNA strutturato (estratta in lib/dna-from-drive). "" = sconosciuta.
+  const companyRegion = dna?.regione || ''
 
   for (const g of grants) {
     const hay = `${g.title} ${g.description ?? ''}`.toLowerCase()

@@ -96,6 +96,7 @@ const AI_SCHEMA: GeminiSchema = {
       properties: {
         p_iva: { type: 'string' },
         rag_soc: { type: 'string' },
+        regione: { type: 'string' },
         ateco: { type: 'array', items: { type: 'string' } },
         fin: {
           type: 'object',
@@ -165,6 +166,7 @@ function normalizeAi(raw: Partial<AiSynthesis> | null): AiSynthesis | null {
     corporate: {
       p_iva: cleanStr(c.p_iva),
       rag_soc: cleanStr(c.rag_soc) || dnaCompanyName,
+      regione: cleanStr(c.regione),
       ateco: cleanArr(c.ateco),
       fin: {
         ult_bilancio_anno: c.fin?.ult_bilancio_anno ?? 0,
@@ -204,9 +206,10 @@ async function synthesizeWithGemini(docs: DriveDoc[]): Promise<AiSynthesis | nul
   const corpus = docs.map((d) => `### ${d.name}\n${d.text}`).join('\n\n').slice(0, 24000)
   const prompt = `Sei un analista che estrae il "DNA aziendale" dai documenti reali di un'azienda
 (presi dal suo Google Drive). Ti fornisco il testo dei file. Produci un JSON con:
-- "corporate": dati strutturati (partita IVA, ragione sociale, codici ATECO, "settori"
-  merceologici in chiaro es. "edilizia e costruzioni"/"informatica e software", dati finanziari,
-  certificazioni, competenze chiave, esperienze/progetti con valore in euro);
+- "corporate": dati strutturati (partita IVA, ragione sociale, "regione" della sede legale
+  (es. "Lazio", "Lombardia"), codici ATECO, "settori" merceologici in chiaro es. "edilizia e
+  costruzioni"/"informatica e software", dati finanziari, certificazioni, competenze chiave,
+  esperienze/progetti con valore in euro);
 - "nodes": 5-10 nodi che riassumono i punti chiave dell'azienda (ogni nodo ha label, group, value 0-100, summary);
 - "headline": una frase che sintetizza l'azienda;
 - "strengths": punti di forza; "gaps": informazioni mancanti o aree deboli.
@@ -219,7 +222,10 @@ REGOLE FONDAMENTALI:
 === DOCUMENTI ===
 ${corpus}`
   const raw = await geminiJson<Partial<AiSynthesis>>(prompt, AI_SCHEMA)
-  return normalizeAi(raw)
+  const ai = normalizeAi(raw)
+  // Se l'AI non ha individuato la regione, ricavala dal testo (best-effort).
+  if (ai && !ai.corporate.regione) ai.corporate.regione = detectCompanyRegion(corpus)
+  return ai
 }
 
 // Costruisce la "galassia" (CompanyDna) dalla sintesi AI: nodo core + i nodi concettuali.
@@ -376,6 +382,26 @@ export function atecoToSectors(ateco: string[]): string[] {
   return [...out]
 }
 
+// Regione dell'azienda dedotta dal testo dei documenti (best-effort, prudente: null se incerto).
+// Riconosce il nome della regione o una città capoluogo. Usata per il filtro geografico.
+const REGION_HINTS: { region: string; rx: RegExp }[] = [
+  { region: 'Lazio', rx: /\blazio\b|\broma\b|latina|frosinone|viterbo|\brieti\b/i },
+  { region: 'Toscana', rx: /toscana|firenze|\bprato\b|\bpisa\b|livorno|arezzo|\bsiena\b|\blucca\b|grosseto/i },
+  { region: 'Sardegna', rx: /sardegna|cagliari|sassari|\bnuoro\b|oristano|\bolbia\b/i },
+  { region: 'Lombardia', rx: /lombardia|milano|bergamo|brescia|\bmonza\b|\bcomo\b|varese|\bpavia\b/i },
+  { region: 'Veneto', rx: /\bveneto\b|venezia|verona|padova|vicenza|treviso|rovigo|belluno/i },
+  { region: 'Piemonte', rx: /piemonte|torino|\bcuneo\b|alessandria|\bnovara\b|\basti\b/i },
+  { region: 'Emilia-Romagna', rx: /emilia|bologna|\bmodena\b|parma|reggio emilia|ferrara|ravenna|rimini|forl/i },
+  { region: 'Campania', rx: /campania|napoli|salerno|caserta|avellino|benevento/i },
+  { region: 'Puglia', rx: /\bpuglia\b|\bbari\b|taranto|\blecce\b|foggia|brindisi|andria/i },
+  { region: 'Sicilia', rx: /sicilia|palermo|catania|messina|siracusa|trapani|ragusa|agrigento/i },
+]
+
+export function detectCompanyRegion(text: string): string {
+  for (const h of REGION_HINTS) if (h.rx.test(text)) return h.region
+  return ''
+}
+
 export function extractCorporateDna(docs: DriveDoc[]): CorporateDna {
   const all = docs.map((d) => d.text).join('\n').toLowerCase()
   const allRaw = docs.map((d) => d.text).join('\n')
@@ -423,6 +449,7 @@ export function extractCorporateDna(docs: DriveDoc[]): CorporateDna {
   return {
     p_iva,
     rag_soc: dnaCompanyName,
+    regione: detectCompanyRegion(allRaw),
     ateco,
     fin: { ult_bilancio_anno, fatturato, cap_sociale, utile_netto },
     cert,

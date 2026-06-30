@@ -90,6 +90,7 @@ const BATCH_SCHEMA: GeminiSchema = {
 async function geminiBatch(dna: CorporateDna, items: ScoreInput[]): Promise<Record<string, BandoScore> | null> {
   const profilo = {
     rag_soc: dna.rag_soc,
+    regione: dna.regione,
     ateco: dna.ateco,
     settori: dna.settori,
     cert: dna.cert,
