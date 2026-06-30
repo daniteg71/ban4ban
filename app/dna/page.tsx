@@ -8,7 +8,7 @@ import { getCompanyInfo } from '@/app/actions/company'
 export const dynamic = 'force-dynamic'
 
 export default async function DnaPage() {
-  const { company, companies, selectedId, drive, dna } = await getCompanyInfo()
+  const { company, companies, selectedId, drive, dna } = await getCompanyInfo({ withDna: true })
 
   if (!drive.connected || !dna) {
     return (

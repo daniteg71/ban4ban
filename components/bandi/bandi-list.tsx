@@ -377,7 +377,7 @@ export function BandiList({
                       </div>
                     )}
                   </div>
-                  <Link href={`/bandi/${g.id}`} className="group">
+                  <Link href={`/bandi/${g.ref ?? g.id}`} className="group">
                     <h3 className="mt-2 text-pretty text-base font-semibold leading-snug group-hover:text-accent">
                       {g.title}
                     </h3>
@@ -386,7 +386,7 @@ export function BandiList({
                     <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground">{g.description}</p>
                   )}
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
-                    <Link href={`/bandi/${g.id}`} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+                    <Link href={`/bandi/${g.ref ?? g.id}`} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
                       Strategia <ArrowRight className="size-3.5" />
                     </Link>
                     {g.sourceUrl && (

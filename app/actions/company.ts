@@ -8,7 +8,7 @@ import { getGrantsPool } from '@/lib/scrape'
 import { checkDriveConnection, listCompanyFolders, type DriveStatus } from '@/lib/drive'
 import { getDnaFromDrive } from '@/lib/dna-from-drive'
 import { APP_NAME, filterCompatible, folderUrl, getSelectedFolderId, placeholderDnaFromFiles } from '@/lib/company-config'
-import { addSearchRun, findGrant, getLatestRun, getRun, getRuns } from '@/lib/store'
+import { addSearchRun, getLatestRun, getRun, getRuns } from '@/lib/store'
 import { classifyNewVsKnown, registerSeen } from '@/lib/token-cache'
 import { buildStrategy, type ExecutionStrategy } from '@/lib/strategy'
 import { refOf, scoreBandi } from '@/lib/scoring'
@@ -34,7 +34,10 @@ export async function setCompany(folderId: string) {
   revalidatePath('/dna')
 }
 
-export async function getCompanyInfo() {
+// `withDna` costruisce la "galassia" DNA (download file + sintesi Gemini): SERVE solo alla
+// pagina /dna. Home e strategia NON usano il dna qui → di default lo saltiamo (grosso risparmio:
+// niente download dei file né chiamata Gemini sul render di quelle pagine).
+export async function getCompanyInfo(opts?: { withDna?: boolean }) {
   // PRE-DOWNLOAD "a monte": avvia (senza bloccare) lo scaricamento del pool bandi mentre la
   // pagina si carica, così al click su "Cerca bandi" il pool è già pronto. Non lancia mai.
   void getGrantsPool().catch(() => {})
@@ -45,7 +48,7 @@ export async function getCompanyInfo() {
   const drive: DriveStatus = await checkDriveConnection(folderId)
   let dna = null
   let corporateDna = null
-  if (folderId && drive.connected) {
+  if (opts?.withDna && folderId && drive.connected) {
     const built = await getDnaFromDrive(folderId, selected?.name)
     dna = built?.companyDna ?? placeholderDnaFromFiles(drive.files, selected?.name)
     corporateDna = built?.corporateDna ?? null
@@ -91,6 +94,7 @@ export async function searchGrants() {
   }
 
   let grants: Omit<Grant, 'id' | 'companyId' | 'createdAt'>[] = raw.map((r) => ({
+    ref: refOf({ source: r.source, link: r.link }),
     title: r.title,
     sourceUrl: r.link,
     sourceName: r.source,
@@ -196,21 +200,62 @@ export async function getGrantsPage(
   return { grants, page: p, totalPages, total, query, sort: sortKey, unfilteredTotal: allRaw.length }
 }
 
-// Output strategico (Step 6) per un bando: analisi dettagliata (6 dimensioni + checklist
-// operativa) al click. Se l'AI è spenta/fallisce, lo scheletro resta (mai null per questo).
-export async function getStrategy(grantId: number): Promise<ExecutionStrategy | null> {
+// Output strategico per un bando, identificato dal REF STABILE (hash fonte+link).
+// Ricostruisce il bando dal POOL CONDIVISO (non dallo store in-memory): così funziona anche
+// dopo un cold-start o su un'altra istanza lambda → niente più 404. Se l'AI è spenta/fallisce,
+// resta lo scheletro (voto rapido + checklist standard).
+export async function getStrategy(ref: string): Promise<ExecutionStrategy | null> {
   const selected = await resolveSelected()
-  const grant = findGrant(selected?.id ?? 'none', grantId)
-  if (!grant) return null
 
+  // 1) Trova il bando nel pool condiviso tramite il ref stabile.
+  const pool = await getGrantsPool()
+  const raw = pool.find((r) => refOf({ source: r.source, link: r.link }) === ref)
+  if (!raw) return null
+
+  // 2) Ricostruisce il Grant dai dati del pool (lo store non serve più qui).
+  const grant: Grant = {
+    id: 0,
+    ref,
+    companyId: selected?.id ?? 'none',
+    title: raw.title,
+    sourceUrl: raw.link,
+    sourceName: raw.source,
+    description: raw.snippet,
+    deadline: 'Da verificare',
+    amount: 'Da verificare',
+    category: null,
+    region: regioneOf(raw.source),
+    matchScore: 0,
+    scoreReason: null,
+    strategy: null,
+    createdAt: new Date(),
+  }
+
+  // 3) DNA dell'azienda (una sola volta qui: getCompanyInfo non lo costruisce più sulla strategia).
   const built = await getDnaFromDrive(selected?.id, selected?.name)
+  const corporateDna = built?.corporateDna ?? null
+
+  // 4) Voto rapido (fallback) così la pagina mostra sempre un punteggio anche senza l'analisi AI.
+  try {
+    const scores = await scoreBandi(corporateDna, [
+      { ref, title: grant.title, source: grant.sourceName ?? '', text: grant.description ?? '' },
+    ])
+    const s = scores[ref]
+    if (s) {
+      grant.matchScore = s.score
+      grant.scoreReason = s.reason
+    }
+  } catch {
+    /* la strategia funziona anche senza voto rapido */
+  }
+
+  // 5) Analisi dettagliata (6 dimensioni + checklist) — cache per (ref + versione DNA).
   const evaluation = await evaluateTenderForCompany(
-    built?.corporateDna ?? null,
+    corporateDna,
     {
-      id: String(grant.id),
+      id: ref,
       title: grant.title,
       source: grant.sourceName ?? undefined,
-      // contesto disponibile: estratto + regione + scadenza + importo (il testo pieno non c'è)
       text: [grant.description, grant.region && `Ambito: ${grant.region}`, grant.amount && `Importo: ${grant.amount}`]
         .filter(Boolean)
         .join('\n'),

@@ -11,6 +11,20 @@ export type RawResult = {
 
 const UA = 'Mozilla/5.0 (compatible; JesapBot/1.0; grant discovery)'
 
+// fetch con TIMEOUT: un portale lento non deve bloccare tutto lo scraping. Ritorna null su
+// timeout/errore (il chiamante fa fallback a lista vuota per quella fonte).
+async function fetchT(url: string, ms = 7000): Promise<Response | null> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), ms)
+  try {
+    return await fetch(url, { headers: { 'User-Agent': UA }, cache: 'no-store', signal: ctrl.signal })
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * Scraping REALE dei principali portali italiani di incentivi alle imprese.
  * Eseguito a ogni ricerca (cache: 'no-store') -> bandi sempre aggiornati. Zero token (HTML/RSS).
@@ -83,8 +97,8 @@ const NOISE_RX = /(manutenzione|recapiti|sito web|cookie|privacy|newsletter|webi
 
 async function scrapeRegionalRss(name: string, url: string): Promise<RawResult[]> {
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA }, cache: 'no-store' })
-    if (!res.ok) return []
+    const res = await fetchT(url)
+    if (!res || !res.ok) return []
     const xml = await res.text()
     const $ = cheerio.load(xml, { xmlMode: true })
     const out: RawResult[] = []
@@ -107,11 +121,8 @@ async function scrapeRegionalRss(name: string, url: string): Promise<RawResult[]
 
 async function scrapeMimitRss(): Promise<RawResult[]> {
   try {
-    const res = await fetch('https://www.mimit.gov.it/it/incentivi?format=feed&type=rss', {
-      headers: { 'User-Agent': UA },
-      cache: 'no-store',
-    })
-    if (!res.ok) return []
+    const res = await fetchT('https://www.mimit.gov.it/it/incentivi?format=feed&type=rss')
+    if (!res || !res.ok) return []
     const xml = await res.text()
     const $ = cheerio.load(xml, { xmlMode: true })
     const out: RawResult[] = []
@@ -132,8 +143,8 @@ async function scrapeMimitRss(): Promise<RawResult[]> {
 
 async function scrapeMimitListing(): Promise<RawResult[]> {
   try {
-    const res = await fetch('https://www.mimit.gov.it/it/incentivi', { headers: { 'User-Agent': UA }, cache: 'no-store' })
-    if (!res.ok) return []
+    const res = await fetchT('https://www.mimit.gov.it/it/incentivi')
+    if (!res || !res.ok) return []
     const html = await res.text()
     const $ = cheerio.load(html)
     const out: RawResult[] = []
@@ -161,8 +172,8 @@ async function scrapeMimitListing(): Promise<RawResult[]> {
 
 async function scrapeInvitalia(): Promise<RawResult[]> {
   try {
-    const res = await fetch('https://www.invitalia.it/cosa-facciamo/rafforziamo-le-imprese', { headers: { 'User-Agent': UA }, cache: 'no-store' })
-    if (!res.ok) return []
+    const res = await fetchT('https://www.invitalia.it/cosa-facciamo/rafforziamo-le-imprese')
+    if (!res || !res.ok) return []
     const html = await res.text()
     const $ = cheerio.load(html)
     const bySlug = new Map<string, string>()

@@ -14,6 +14,8 @@ export type Company = {
 
 export type Grant = {
   id: number
+  /** ref STABILE (hash di fonte+link): identifica il bando tra istanze/ricerche, usato nelle URL /bandi/[ref] */
+  ref?: string
   companyId: string
   title: string
   sourceUrl: string | null
