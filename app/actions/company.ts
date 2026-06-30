@@ -4,7 +4,7 @@ import { cache } from 'react'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import type { Grant } from '@/lib/db/schema'
-import { scrapeGrants } from '@/lib/scrape'
+import { getGrantsPool } from '@/lib/scrape'
 import { checkDriveConnection, listCompanyFolders, type DriveStatus } from '@/lib/drive'
 import { getDnaFromDrive } from '@/lib/dna-from-drive'
 import { APP_NAME, filterCompatible, folderUrl, getSelectedFolderId, placeholderDnaFromFiles } from '@/lib/company-config'
@@ -35,6 +35,10 @@ export async function setCompany(folderId: string) {
 }
 
 export async function getCompanyInfo() {
+  // PRE-DOWNLOAD "a monte": avvia (senza bloccare) lo scaricamento del pool bandi mentre la
+  // pagina si carica, così al click su "Cerca bandi" il pool è già pronto. Non lancia mai.
+  void getGrantsPool().catch(() => {})
+
   const companies = await listCompanyFolders()
   const selected = await resolveSelected()
   const folderId = selected?.id
@@ -69,7 +73,7 @@ export async function searchGrants() {
   const selected = await resolveSelected()
   const companyId = selected?.id ?? 'none'
 
-  const raw = await scrapeGrants()
+  const raw = await getGrantsPool() // pool condiviso pre-scaricato (no re-scrape a ogni ricerca)
   raw.sort((a, b) => {
     const ta = a.published ? Date.parse(a.published) : NaN
     const tb = b.published ? Date.parse(b.published) : NaN

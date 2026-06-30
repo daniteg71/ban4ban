@@ -45,6 +45,38 @@ export async function scrapeGrants(_queries?: string[]): Promise<RawResult[]> {
   return Array.from(byLink.values()).slice(0, 60)
 }
 
+// Pool dei bandi PRE-SCARICATO e CONDIVISO. I portali sono identici per tutte le aziende, quindi
+// lo scraping (6 fetch + parsing) NON deve girare a ogni ricerca. Cache in-memory (globalThis,
+// stesso stile di DNA/scores/store) con TTL: lo scraping vero parte una volta sola, poi tutte le
+// ricerche (di qualunque azienda) riusano il pool finché è "fresco". Il refresh alla scadenza È
+// l'automazione che aggiorna i nuovi bandi. Così il tempo di ricerca resta solo per filtro
+// per-azienda + valutazione. NB: in-memory => si rinfresca a ogni cold-start del lambda.
+const POOL_TTL_MS = 30 * 60 * 1000 // 30 minuti
+
+const gp = globalThis as unknown as {
+  __jesapPool?: { at: number; data: RawResult[] }
+  __jesapPoolInflight?: Promise<RawResult[]> | null
+}
+
+export async function getGrantsPool(): Promise<RawResult[]> {
+  const cached = gp.__jesapPool
+  if (cached && Date.now() - cached.at < POOL_TTL_MS) return cached.data
+
+  // Deduplica chiamate concorrenti: se uno scraping è già in corso, ci si aggancia a quello.
+  if (gp.__jesapPoolInflight) return gp.__jesapPoolInflight
+
+  gp.__jesapPoolInflight = (async () => {
+    try {
+      const data = await scrapeGrants()
+      if (data.length) gp.__jesapPool = { at: Date.now(), data } // non cachare un pool vuoto
+      return data
+    } finally {
+      gp.__jesapPoolInflight = null
+    }
+  })()
+  return gp.__jesapPoolInflight
+}
+
 // Tiene solo gli item che parlano di bandi/agevolazioni (scarta news generiche e voci di servizio).
 const BANDO_RX = /(band|contribut|avvis|finanziament|voucher|agevolaz|incentiv|fond[oi]|por |fesr|fse|sovvenzion|credito d|call|sostegn)/i
 const NOISE_RX = /(manutenzione|recapiti|sito web|cookie|privacy|newsletter|webinar|evento|premiazione|giornata)/i
