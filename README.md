@@ -86,7 +86,6 @@ npm run dev   # http://localhost:3000
 
 Built by **JESAP** (Junior Enterprise SAPienza):
 
-- Andrea Rinaldini ([@Zirin405](https://github.com/Zirin405))
 - Daniele Tegliucci ([@daniteg71](https://github.com/daniteg71))
-- Bryan Cristante ([@BryanCristante](https://github.com/BryanCristante))
 - Gustavo ([@gusuzin](https://github.com/gusuzin))
+- Andrea Rinaldini ([@Zirin405](https://github.com/Zirin405))
